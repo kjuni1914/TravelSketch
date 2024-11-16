@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "514134236088",
+    "project_id": "travelsketch-a4f20",
+    "storage_bucket": "travelsketch-a4f20.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:514134236088:android:b3cfcf40a867f496e28d4d",
+        "android_client_info": {
+          "package_name": "com.travelsketch"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASGe509Yx7iQJNjQbdhFwhkEr_G6BgOdk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
