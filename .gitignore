@@ -3,6 +3,7 @@
 
 ### AndroidStudio ###
 # Covers files to be ignored for android development using Android Studio.
+.env
 
 # Built application files
 *.apk
