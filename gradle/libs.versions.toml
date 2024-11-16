@@ -8,6 +8,12 @@ espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.9.3"
 composeBom = "2024.04.01"
+google-maps = "18.0.2"
+maps-compose = "2.13.0"
+google-maps-compose = "2.13.0"
+
+android-maps-utils = "3.4.0"
+android-maps-compose = "2.13.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -24,6 +30,12 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+
+google-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "google-maps" }
+maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "maps-compose" }
+google-maps-utils = { module = "com.google.maps.android:android-maps-utils", version.ref = "android-maps-utils" }
+google-maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "android-maps-compose" }
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
