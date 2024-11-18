@@ -2,6 +2,8 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=androidstudio
 
 ### AndroidStudio ###
+
+.DS_Store
 # Covers files to be ignored for android development using Android Studio.
 .env
 
