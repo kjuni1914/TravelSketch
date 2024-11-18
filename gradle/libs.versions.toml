@@ -14,6 +14,7 @@ google-maps-compose = "2.13.0"
 
 android-maps-utils = "3.4.0"
 android-maps-compose = "2.13.0"
+firebaseAuth = "23.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -35,6 +36,7 @@ google-maps = { module = "com.google.android.gms:play-services-maps", version.re
 maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "maps-compose" }
 google-maps-utils = { module = "com.google.maps.android:android-maps-utils", version.ref = "android-maps-utils" }
 google-maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "android-maps-compose" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
 
 
 [plugins]
