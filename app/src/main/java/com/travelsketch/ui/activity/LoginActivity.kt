@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -12,9 +13,11 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -41,24 +44,37 @@ class LoginActivity : ComponentActivity() {
 
             UserLayout(title = when (currentScreen) {
                 "Login" -> "Login"
-                "SignIn" -> "Sign Up"
+                "SignUp" -> "SignUp"
                 "RegistrationSuccess" -> "Registration Successful"
+                "FindID" -> "FindID"
+                "ResetPassword" -> "ResetPassword"
                 else -> "Login"
             }) {
                 when (currentScreen) {
                     "Login" -> Login(
-                        onSignInClick = { loginViewModel.setCurrentScreen("SignIn") },
+                        onSignUpClick = { loginViewModel.setCurrentScreen("SignUp") },
                         onLoginClick = { email, password ->
                             loginViewModel.loginUser(email, password)
-                        }
+                        },
+                        onFindIDClick = { loginViewModel.setCurrentScreen("FindID") },
+                        onResetPasswordClick = { loginViewModel.setCurrentScreen("ResetPassword") }
                     )
-                    "SignIn" -> SignIn(
+                    "SignUp" -> SignUp(
                         onRegisterClick = { email, password, phoneNumber ->
                             loginViewModel.registerUser(email, password, phoneNumber)
                         }
                     )
                     "RegistrationSuccess" -> RegistrationSuccessScreen(
                         onLoginClick = { loginViewModel.setCurrentScreen("Login") }
+                    )
+                    "FindID" -> FindID(
+                        onFindIDClick = {
+                        /* TODO: loginViewModel에서 연결 */
+                        }
+                    )
+                    "ResetPassword" -> ResetPassword(
+                        onResetPasswordClick = {
+                        /* TODO: loginViewModel에서 연결 */  }
                     )
                 }
             }
@@ -68,23 +84,28 @@ class LoginActivity : ComponentActivity() {
 
 @Composable
 fun Login(
-    onSignInClick: () -> Unit,
-    onLoginClick: (email: String, password: String) -> Unit
+    onSignUpClick: () -> Unit,
+    onLoginClick: (email: String, password: String) -> Unit,
+    onFindIDClick: () -> Unit,
+    onResetPasswordClick: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    val emailFocusRequester = remember { FocusRequester() }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(emailFocusRequester)
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -99,8 +120,83 @@ fun Login(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.End
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Divider(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(1.dp),
+                    color = Color.Gray
+                )
+                Text(
+                    text = "Find ID",
+                    modifier = Modifier
+                        .padding(horizontal = 8.dp)
+                        .clickable {
+                            onFindIDClick()
+                            // TODO: 아이디 찾기로 연결
+                        },
+                    color = Color.Blue
+                )
+                Divider(
+                    modifier = Modifier
+//                        .weight(1f)
+                        .width(24.dp)
+                        .height(1.dp),
+                    color = Color.Gray
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Divider(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(1.dp),
+                    color = Color.Gray
+                )
+                Text(
+                    text = "Reset Password",
+                    modifier = Modifier
+                        .padding(horizontal = 8.dp)
+                        .clickable {
+                            onResetPasswordClick()
+                            // TODO: 비밀번호 재설정으로 연결
+                        },
+                    color = Color.Blue
+                )
+                Divider(
+                    modifier = Modifier
+//                        .weight(1f)
+                        .width(24.dp)
+                        .height(1.dp),
+                    color = Color.Gray
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Button(
-            onClick = { onLoginClick(email, password) },
+            onClick = {
+                if (email.isEmpty()) {
+                    emailFocusRequester.requestFocus()
+                } else {
+                    onLoginClick(email, password)
+                }
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Login")
@@ -109,7 +205,7 @@ fun Login(
         Spacer(modifier = Modifier.height(8.dp))
 
         TextButton(
-            onClick = { onSignInClick() },
+            onClick = { onSignUpClick() },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Sign Up")
@@ -118,7 +214,7 @@ fun Login(
 }
 
 @Composable
-fun SignIn(
+fun SignUp(
     onRegisterClick: (email: String, password: String, phoneNumber: String) -> Unit
 ) {
     var email by remember { mutableStateOf("") }
@@ -128,7 +224,19 @@ fun SignIn(
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var showEmailError by remember { mutableStateOf(false) }
-    val isPasswordMatching = password == confirmPassword
+    var showConfirmPasswordError by remember { mutableStateOf(false) }
+
+    val isPasswordMatching = password == confirmPassword && confirmPassword.isNotEmpty()
+    val emailFocusRequester = remember { FocusRequester() }
+    val passwordFocusRequester = remember { FocusRequester() }
+    val confirmPasswordFocusRequester = remember { FocusRequester() }
+    val phoneFocusRequester1 = remember { FocusRequester() }
+    val phoneFocusRequester2 = remember { FocusRequester() }
+    val phoneFocusRequester3 = remember { FocusRequester() }
+
+    var part1 by remember { mutableStateOf("") }
+    var part2 by remember { mutableStateOf("") }
+    var part3 by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -136,6 +244,7 @@ fun SignIn(
             .padding(16.dp),
         verticalArrangement = Arrangement.Center
     ) {
+        // Email
         OutlinedTextField(
             value = email,
             onValueChange = {
@@ -143,7 +252,9 @@ fun SignIn(
                 if (showEmailError) showEmailError = false
             },
             label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(emailFocusRequester)
         )
 
         Box(
@@ -162,32 +273,73 @@ fun SignIn(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Password
         PasswordInput(
             password = password,
-            onPasswordChange = { password = it },
+            onPasswordChange = {
+                password = it
+            },
             confirmPassword = confirmPassword,
-            onConfirmPasswordChange = { confirmPassword = it },
+            onConfirmPasswordChange = {
+                confirmPassword = it
+                if (showConfirmPasswordError) {
+                    showConfirmPasswordError = false
+                }
+            },
             isPasswordVisible = passwordVisible,
             onPasswordVisibilityChange = { passwordVisible = !passwordVisible },
             isConfirmPasswordVisible = confirmPasswordVisible,
             onConfirmPasswordVisibilityChange = { confirmPasswordVisible = !confirmPasswordVisible },
-            isPasswordMatching = isPasswordMatching
+            isPasswordMatching = isPasswordMatching,
+            showConfirmPasswordError = showConfirmPasswordError,
+            passwordFocusRequester = passwordFocusRequester,
+            confirmPasswordFocusRequester = confirmPasswordFocusRequester
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Phone
         PhoneNumberInput(
-            onPhoneNumberComplete = { phoneNumber = it }
+            part1 = part1,
+            part2 = part2,
+            part3 = part3,
+            onPart1Change = { part1 = it },
+            onPart2Change = { part2 = it },
+            onPart3Change = { part3 = it },
+            focusRequester1 = phoneFocusRequester1,
+            focusRequester2 = phoneFocusRequester2,
+            focusRequester3 = phoneFocusRequester3
         )
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        // Sign Up Button
         Button(
             onClick = {
-                if (!email.matches(Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"))) {
-                    showEmailError = true
-                } else if (isPasswordMatching && phoneNumber.isNotEmpty()) {
-                    onRegisterClick(email, password, phoneNumber)
+                phoneNumber = if (part1.isNotEmpty() && part2.isNotEmpty() && part3.isNotEmpty()) {
+                    "$part1$part2$part3"
+                } else {
+                    ""
+                }
+
+                when {
+                    !email.matches(Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) -> {
+                        showEmailError = true
+                        emailFocusRequester.requestFocus()
+                    }
+                    password.isEmpty() -> {
+                        passwordFocusRequester.requestFocus()
+                    }
+                    confirmPassword.isEmpty() || !isPasswordMatching -> {
+                        showConfirmPasswordError = true
+                        confirmPasswordFocusRequester.requestFocus()
+                    }
+                    phoneNumber.isEmpty() -> {
+                        phoneFocusRequester1.requestFocus()
+                    }
+                    else -> {
+                        onRegisterClick(email, password, phoneNumber)
+                    }
                 }
             },
             modifier = Modifier.fillMaxWidth()
@@ -207,14 +359,20 @@ fun PasswordInput(
     onPasswordVisibilityChange: () -> Unit,
     isConfirmPasswordVisible: Boolean,
     onConfirmPasswordVisibilityChange: () -> Unit,
-    isPasswordMatching: Boolean
+    isPasswordMatching: Boolean,
+    showConfirmPasswordError: Boolean,
+    passwordFocusRequester: FocusRequester,
+    confirmPasswordFocusRequester: FocusRequester
 ) {
     PasswordField(
         label = "Password",
         password = password,
         onPasswordChange = onPasswordChange,
         isPasswordVisible = isPasswordVisible,
-        onVisibilityChange = onPasswordVisibilityChange
+        onVisibilityChange = onPasswordVisibilityChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(passwordFocusRequester)
     )
 
     Spacer(modifier = Modifier.height(4.dp))
@@ -224,7 +382,10 @@ fun PasswordInput(
         password = confirmPassword,
         onPasswordChange = onConfirmPasswordChange,
         isPasswordVisible = isConfirmPasswordVisible,
-        onVisibilityChange = onConfirmPasswordVisibilityChange
+        onVisibilityChange = onConfirmPasswordVisibilityChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(confirmPasswordFocusRequester)
     )
 
     Box(
@@ -232,7 +393,10 @@ fun PasswordInput(
             .fillMaxWidth()
             .height(20.dp)
     ) {
-        PasswordCheck(isPasswordMatching = isPasswordMatching, confirmPassword = confirmPassword)
+        PasswordCheck(
+            isPasswordMatching = isPasswordMatching,
+            showConfirmPasswordError = showConfirmPasswordError
+        )
     }
 }
 
@@ -242,13 +406,14 @@ fun PasswordField(
     password: String,
     onPasswordChange: (String) -> Unit,
     isPasswordVisible: Boolean,
-    onVisibilityChange: () -> Unit
+    onVisibilityChange: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     OutlinedTextField(
         value = password,
         onValueChange = onPasswordChange,
         label = { Text(label) },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
         trailingIcon = {
             IconButton(onClick = onVisibilityChange) {
@@ -262,8 +427,8 @@ fun PasswordField(
 }
 
 @Composable
-fun PasswordCheck(isPasswordMatching: Boolean, confirmPassword: String) {
-    if (!isPasswordMatching && confirmPassword.isNotEmpty()) {
+fun PasswordCheck(isPasswordMatching: Boolean, showConfirmPasswordError: Boolean) {
+    if (showConfirmPasswordError && !isPasswordMatching) {
         Text(
             text = "Passwords do not match.",
             color = MaterialTheme.colorScheme.error,
@@ -274,16 +439,16 @@ fun PasswordCheck(isPasswordMatching: Boolean, confirmPassword: String) {
 
 @Composable
 fun PhoneNumberInput(
-    onPhoneNumberComplete: (String) -> Unit
+    part1: String,
+    part2: String,
+    part3: String,
+    onPart1Change: (String) -> Unit,
+    onPart2Change: (String) -> Unit,
+    onPart3Change: (String) -> Unit,
+    focusRequester1: FocusRequester,
+    focusRequester2: FocusRequester,
+    focusRequester3: FocusRequester
 ) {
-    var part1 by remember { mutableStateOf("") }
-    var part2 by remember { mutableStateOf("") }
-    var part3 by remember { mutableStateOf("") }
-
-    val focusRequester1 = remember { FocusRequester() }
-    val focusRequester2 = remember { FocusRequester() }
-    val focusRequester3 = remember { FocusRequester() }
-
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -292,7 +457,7 @@ fun PhoneNumberInput(
             value = part1,
             onValueChange = {
                 if (it.length <= 3) {
-                    part1 = it
+                    onPart1Change(it)
                     if (it.length == 3) focusRequester2.requestFocus()
                 }
             },
@@ -307,7 +472,7 @@ fun PhoneNumberInput(
             value = part2,
             onValueChange = {
                 if (it.length <= 4) {
-                    part2 = it
+                    onPart2Change(it)
                     if (it.length == 4) focusRequester3.requestFocus()
                 }
             },
@@ -322,10 +487,7 @@ fun PhoneNumberInput(
             value = part3,
             onValueChange = {
                 if (it.length <= 4) {
-                    part3 = it
-                    if (it.length == 4 && part1.length == 3 && part2.length == 4) {
-                        onPhoneNumberComplete("$part1$part2$part3")
-                    }
+                    onPart3Change(it)
                 }
             },
             label = { Text("") },
@@ -360,4 +522,20 @@ fun RegistrationSuccessScreen(onLoginClick: () -> Unit) {
             Text("Go to Login Screen")
         }
     }
+}
+
+@Composable
+fun FindID(
+    onFindIDClick: () -> Unit
+) {
+    Text("findIDUI")
+    // TODO: 아이디 찾기 구현
+}
+
+@Composable
+fun ResetPassword(
+    onResetPasswordClick: () -> Unit
+) {
+    Text("ResetPasswordUI")
+    // TODO: 비밀번호 재설정 구현
 }

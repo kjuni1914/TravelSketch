@@ -33,8 +33,8 @@ class LoginViewModel : ViewModel() {
 
                 val user = mapOf(
                     "phone_number" to phoneNumber,
-                    "password" to password,
-                    "view_type" to false,
+//                    "password" to password,
+                    "view_type" to false, // false -> 리스트 뷰, true -> 맵 뷰?
                     "canvas_ids" to "",
                     "friend_ids" to ""
                 )
