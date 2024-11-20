@@ -8,8 +8,8 @@ interface DatabaseClient {
 
     suspend fun createCanvas(
         canvasId: String,
-        avgGpsLatitude: Double?,
-        avgGpsLongitude: Double?,
+        avgLatitude: Double?,
+        avgLongitude: Double?,
         isVisible: Boolean,
         previewBoxId: String?,
         range: Double
@@ -17,8 +17,8 @@ interface DatabaseClient {
     suspend fun readCanvas(canvasId: String)
     suspend fun updateCanvas(
         canvasId: String,
-        avgGpsLatitude: Double?,
-        avgGpsLongitude: Double?,
+        avgLatitude: Double?,
+        avgLongitude: Double?,
         isVisible: Boolean,
         previewBoxId: String?,
         range: Double
