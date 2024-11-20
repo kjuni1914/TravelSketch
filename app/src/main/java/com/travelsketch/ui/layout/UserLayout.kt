@@ -9,12 +9,12 @@ import androidx.compose.ui.Modifier
 @Composable
 fun UserLayout(
     title: String,
+    snackbarHostState: SnackbarHostState,
     content: @Composable () -> Unit
 ) {
     Scaffold(
-        topBar = {
-            TopAppBar(title = { Text(title) })
-        }
+        topBar = { TopAppBar(title = { Text(title) }) },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
