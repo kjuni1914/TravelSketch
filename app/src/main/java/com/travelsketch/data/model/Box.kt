@@ -14,9 +14,6 @@ data class Box(
     @PropertyName("latitude") val latitude: Double? = null,
     @PropertyName("longitude") val longitude: Double? = null,
     @PropertyName("time") val time: Int? = null,
-    @PropertyName("type") val typeString: String,
-    @PropertyName("width") val width: Int = 0
-) {
-    val type: BoxType
-        get() = BoxType.fromString(typeString)
-}
+    @PropertyName("width") val width: Int = 0,
+    @PropertyName("type") val type: String = "TEXT",
+)

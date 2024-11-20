@@ -8,7 +8,7 @@ import com.google.firebase.database.PropertyName
 data class User(
     // Mapping field name to constant name
     @PropertyName("canvas_ids") val canvasIds: String = "",
-    @PropertyName("friends_ids") val friendsIds: String = "",
+    @PropertyName("friends_ids") val friendIds: String = "",
     @PropertyName("phone_number") val phoneNumber: String = "",
     @PropertyName("view_type") val viewType: Boolean = true
 )

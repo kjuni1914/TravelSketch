@@ -1,6 +1,9 @@
 package com.travelsketch.data.repository
 
+import com.travelsketch.data.model.Box
 import com.travelsketch.data.model.BoxType
+import com.travelsketch.data.model.Canvas
+import com.travelsketch.data.model.User
 
 interface DatabaseClient {
     val database: Any?
@@ -14,7 +17,7 @@ interface DatabaseClient {
         previewBoxId: String?,
         range: Double
     )
-    suspend fun readCanvas(canvasId: String)
+    suspend fun readCanvas(canvasId: String): Canvas?
     suspend fun updateCanvas(
         canvasId: String,
         avgLatitude: Double?,
@@ -25,6 +28,7 @@ interface DatabaseClient {
     )
     suspend fun deleteCanvas(canvasId: String)
     suspend fun createBox(
+        canvasId: String,
         boxId: String,
         boxX: Int,
         boxY: Int,
@@ -34,12 +38,13 @@ interface DatabaseClient {
         height: Int,
         latitude: Double?,
         longitude: Double?,
-        time: Double?,
-        type: BoxType,
+        time: Int?,
+        type: String,
         width: Int
     )
-    suspend fun readBox(boxId: String)
+    suspend fun readBox(canvasId:String, boxId: String): Box?
     suspend fun updateBox(
+        canvasId: String,
         boxId: String,
         boxX: Int,
         boxY: Int,
@@ -49,11 +54,11 @@ interface DatabaseClient {
         height: Int,
         latitude: Double?,
         longitude: Double?,
-        time: Double?,
+        time: Int?,
         type: BoxType,
         width: Int
     )
-    suspend fun deleteBox(boxId: String)
+    suspend fun deleteBox(canvasId:String, boxId: String)
     suspend fun createUser(
         userId: String,
         canvasIds: String,
@@ -61,7 +66,7 @@ interface DatabaseClient {
         phoneNumber: String,
         viewType: Boolean
     )
-    suspend fun readUser(userId: String)
+    suspend fun readUser(userId: String): User?
     suspend fun updateUser(
         userId: String,
         canvasIds: String,
