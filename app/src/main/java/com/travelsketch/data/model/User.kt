@@ -7,10 +7,10 @@ import com.google.firebase.database.PropertyName
 @IgnoreExtraProperties
 data class User(
     // Mapping field name to constant name
-    @PropertyName("canvas_ids") val canvasIds: String = "",
-    @PropertyName("friends_ids") val friendIds: String = "",
-    @PropertyName("phone_number") val phoneNumber: String = "",
-    @PropertyName("view_type") val viewType: Boolean = true
+    @get:PropertyName("canvas_ids") @set:PropertyName("canvas_ids") var canvasIds: String = "",
+    @get:PropertyName("friends_ids") @set:PropertyName("friends_ids") var friendIds: String = "",
+    @get:PropertyName("phone_number") @set:PropertyName("phone_number") var phoneNumber: String = "",
+    @get:PropertyName("view_type") @set:PropertyName("view_type") var viewType: Boolean = true
 ) {
     override fun toString(): String {
         return "User(canvasIds='$canvasIds', friendIds='$friendIds', phoneNumber='$phoneNumber', viewType=$viewType)"
