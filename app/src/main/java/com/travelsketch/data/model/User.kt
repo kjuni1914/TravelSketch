@@ -11,4 +11,8 @@ data class User(
     @PropertyName("friends_ids") val friendIds: String = "",
     @PropertyName("phone_number") val phoneNumber: String = "",
     @PropertyName("view_type") val viewType: Boolean = true
-)
+) {
+    override fun toString(): String {
+        return "User(canvasIds='$canvasIds', friendIds='$friendIds', phoneNumber='$phoneNumber', viewType=$viewType)"
+    }
+}
