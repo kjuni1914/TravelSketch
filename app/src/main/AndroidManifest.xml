@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- 인터넷 사용 권한 설정-->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- 구글맵 사용 시, 위치 권한 허용 설정-->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
         android:name=".GlobalApplication"
@@ -13,8 +16,13 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        tools:targetApi="31">
+        android:supportsRtl="true">
+
+        <!--구글맵 API 사용-->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyD2nKPV8VIa2XbivuB6gtIqBRI4thUjbc0"/>
+
         <!-- 카카오 로그인, 인가코드를 받기 위한 액티비티 -->
         <activity android:name="com.kakao.sdk.auth.AuthCodeHandlerActivity"
             android:exported="true">
@@ -30,6 +38,7 @@
         <activity
             android:name=".ui.activity.LoginActivity"
             android:exported="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar"
             android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
