@@ -10,4 +10,8 @@ data class Canvas(
     @PropertyName("is_visible") val isVisible: Boolean = true,
     @PropertyName("preview_box_id") val previewBoxId: String? = null,
     val range: Double = .0
-)
+) {
+    override fun toString(): String {
+        return "Canvas(avgLatitude=$avgLatitude, avgLongitude=$avgLongitude, isVisible=$isVisible, previewBoxId=$previewBoxId, range=$range)"
+    }
+}

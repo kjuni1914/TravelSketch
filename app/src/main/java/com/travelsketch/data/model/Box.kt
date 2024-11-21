@@ -16,4 +16,8 @@ data class Box(
     @PropertyName("time") val time: Int? = null,
     @PropertyName("width") val width: Int = 0,
     @PropertyName("type") val type: String = "TEXT",
-)
+) {
+    override fun toString(): String {
+        return "Box(boxX=$boxX, boxY=$boxY, boxZ=$boxZ, data='$data', degree=$degree, height=$height, latitude=$latitude, longitude=$longitude, time=$time, width=$width, type='$type')"
+    }
+}
