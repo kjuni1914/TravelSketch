@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "514134236088",
+    "firebase_url": "https://travelsketch-a4f20-default-rtdb.firebaseio.com",
     "project_id": "travelsketch-a4f20",
     "storage_bucket": "travelsketch-a4f20.firebasestorage.app"
   },
@@ -12,7 +13,20 @@
           "package_name": "com.travelsketch"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "514134236088-v14qdptgep38oa8a7l1lcr7qs35rq6ja.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.travelsketch",
+            "certificate_hash": "c6164ab6094ad6130d13695a687957e025b3f032"
+          }
+        },
+        {
+          "client_id": "514134236088-9ras4htpv3hg9l04jltkojdhn4mg2j58.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyASGe509Yx7iQJNjQbdhFwhkEr_G6BgOdk"
@@ -20,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "514134236088-9ras4htpv3hg9l04jltkojdhn4mg2j58.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

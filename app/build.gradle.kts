@@ -53,6 +53,7 @@ android {
 
 dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.5.1") // 준희 // 비밀번호 보이기|가리기 버튼
+    implementation("com.google.android.gms:play-services-auth:20.7.0") // 준희 // 구글 로그인 API
     implementation("com.kakao.sdk:v2-all:2.20.6") // 전체 모듈 설치, 2.11.0 버전부터 지원
     implementation("com.kakao.sdk:v2-user:2.20.6") // 카카오 로그인 API 모듈
     implementation("com.kakao.sdk:v2-share:2.20.6") // 카카오톡 공유 API 모듈

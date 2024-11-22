@@ -4,7 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -14,28 +16,75 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.travelsketch.ui.composable.*
-import com.travelsketch.ui.layout.*
-import com.travelsketch.viewmodel.*
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.travelsketch.R
+import com.travelsketch.ui.composable.PasswordField
+import com.travelsketch.ui.composable.PhoneNumberInput
+import com.travelsketch.ui.composable.PhoneNumberState
+import com.travelsketch.ui.layout.UserLayout
+import com.travelsketch.viewmodel.LoginViewModel
 
 class LoginActivity : ComponentActivity() {
     private val loginViewModel: LoginViewModel by viewModels()
 
+    private lateinit var googleSignInClient: GoogleSignInClient
+
+    private val googleSignInLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            val idToken = account?.idToken
+            if (idToken != null) {
+                loginViewModel.firebaseAuthWithGoogle(idToken)
+            } else {
+                loginViewModel.showSnackbar("Google sign-in failed.")
+            }
+        } catch (e: ApiException) {
+            loginViewModel.showSnackbar("Google sign-in failed: ${e.message}")
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val googleSignInOption = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.google_client_id))
+            .requestEmail()
+            .build()
+        googleSignInClient = GoogleSignIn.getClient(this, googleSignInOption)
+        loginViewModel.userReload()
+
+        if (loginViewModel.currentUser() != null) {
+            loginViewModel.setCurrentScreen("Next")
+        } else {
+            loginViewModel.setCurrentScreen("Login")
+        }
+
         setContent {
             val currentScreen by loginViewModel.currentScreen.collectAsState()
-            val eventFlow = loginViewModel.eventFlow
             val snackbarHostState = remember { SnackbarHostState() }
+            val isLoading by loginViewModel.isLoading.collectAsState()
 
-            BackHandler(enabled = currentScreen != "Login") {
-                loginViewModel.setCurrentScreen("Login")
+            BackHandler {
+                if (loginViewModel.currentUser() != null) {
+                    //로그인 시 메인화면
+                    loginViewModel.setCurrentScreen("Next")
+                } else {
+                    //로그인 전 메인화면
+                    loginViewModel.setCurrentScreen("Login")
+                }
             }
 
-            LaunchedEffect(eventFlow) {
-                eventFlow.collect { message ->
+            LaunchedEffect(key1 = true) {
+                loginViewModel.eventFlow.collect { message ->
                     snackbarHostState.showSnackbar(message)
                 }
             }
@@ -47,38 +96,52 @@ class LoginActivity : ComponentActivity() {
                     "RegistrationSuccess" -> "Registration Successful"
                     "FindID" -> "FindID"
                     "ResetPassword" -> "ResetPassword"
+                    "Next" -> "Next"
                     else -> "Login"
                 },
                 snackbarHostState = snackbarHostState
             ) {
-                when (currentScreen) {
-                    "Login" -> Login(
-                        onSignUpClick = { loginViewModel.setCurrentScreen("SignUp") },
-                        onLoginClick = { email, password ->
-                            loginViewModel.loginUser(email, password)
-                            // TODO: 유저가 캔버스뷰타입을 선택했으면 바로 캔버스뷰로 쏴주고 아니면 뷰타입 선택화면 쏴주기
-                        },
-                        onFindIDClick = { loginViewModel.setCurrentScreen("FindID") },
-                        onResetPasswordClick = { loginViewModel.setCurrentScreen("ResetPassword") }
-                    )
-                    "SignUp" -> SignUp(
-                        onRegisterClick = { email, password, phoneNumber ->
-                            loginViewModel.registerUser(email, password, phoneNumber)
-                        }
-                    )
-                    "RegistrationSuccess" -> RegistrationSuccessScreen(
-                        onLoginClick = { loginViewModel.setCurrentScreen("Login") }
-                    )
-                    "FindID" -> FindID(
-                        onFindIDClick = {
-                            /* TODO: loginViewModel에서 연결 */
-                        }
-                    )
-                    "ResetPassword" -> ResetPassword(
-                        onResetPasswordClick = {
-                            /* TODO: loginViewModel에서 연결 */
-                        }
-                    )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when (currentScreen) {
+                        "Login" -> Login(
+                            onSignUpClick = { loginViewModel.setCurrentScreen("SignUp") },
+                            onLoginClick = { email, password ->
+                                loginViewModel.loginUser(email, password)
+                            },
+                            onFindIDClick = { loginViewModel.setCurrentScreen("FindID") },
+                            onResetPasswordClick = { loginViewModel.setCurrentScreen("ResetPassword") },
+                            onGoogleLoginClick = {
+                                val signInIntent = googleSignInClient.signInIntent
+                                googleSignInLauncher.launch(signInIntent)
+                            }
+                        )
+                        "SignUp" -> SignUp(
+                            onRegisterClick = { email, password, phoneNumber ->
+                                loginViewModel.registerUser(email, password, phoneNumber)
+                            }
+                        )
+                        "RegistrationSuccess" -> RegistrationSuccessScreen(
+                            onLoginClick = { loginViewModel.setCurrentScreen("Login") }
+                        )
+                        "FindID" -> FindID(
+                            onFindIDClick = {
+                                /* TODO: FindID 연결 */
+                            }
+                        )
+                        "ResetPassword" -> ResetPassword(
+                            onResetPasswordClick = {
+                                /* TODO: ResetPassword 연결 */
+                            }
+                        )
+                        "Next" -> Next()
+                    }
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .size(48.dp)
+                        )
+                    }
                 }
             }
         }
@@ -90,7 +153,8 @@ fun Login(
     onSignUpClick: () -> Unit,
     onLoginClick: (email: String, password: String) -> Unit,
     onFindIDClick: () -> Unit,
-    onResetPasswordClick: () -> Unit
+    onResetPasswordClick: () -> Unit,
+    onGoogleLoginClick: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -128,6 +192,7 @@ fun Login(
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.End
         ) {
+            // Find ID
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -146,18 +211,19 @@ fun Login(
                         .padding(horizontal = 8.dp)
                         .clickable {
                             onFindIDClick()
-                            // TODO: 아이디 찾기로 연결
+                            // TODO: Find ID 연결
                         },
                     color = Color.Blue
                 )
                 Divider(
                     modifier = Modifier
-//                        .weight(1f)
                         .width(24.dp)
                         .height(1.dp),
                     color = Color.Gray
                 )
             }
+
+            // Reset Password
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -181,7 +247,6 @@ fun Login(
                 )
                 Divider(
                     modifier = Modifier
-//                        .weight(1f)
                         .width(24.dp)
                         .height(1.dp),
                     color = Color.Gray
@@ -212,6 +277,15 @@ fun Login(
         ) {
             Text("Sign Up")
         }
+
+        Image(
+            painter = painterResource(id = R.drawable.continue_with_google),
+            contentDescription = "Continue with Google",
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onGoogleLoginClick() }
+        )
+
     }
 }
 
@@ -237,7 +311,7 @@ fun SignUp(
             .padding(16.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        // Email
+        // Email Input
         OutlinedTextField(
             value = email,
             onValueChange = {
@@ -245,14 +319,30 @@ fun SignUp(
                 if (showEmailError) showEmailError = false
             },
             label = { Text("Email") },
+            isError = showEmailError,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(emailFocusRequester)
         )
 
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(20.dp)
+        ) {
+            if (showEmailError) {
+                Text(
+                    text = "Please enter a valid email.",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Password
+        // Password Input
         PasswordInput(
             password = password,
             onPasswordChange = { password = it },
@@ -269,7 +359,7 @@ fun SignUp(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Phone Number
+        // Phone Number Input
         PhoneNumberInput(
             phoneNumber = phoneNumberState,
             onPhoneNumberChange = { phoneNumberState = it }
@@ -306,7 +396,6 @@ fun SignUp(
         }
     }
 }
-
 
 @Composable
 fun PasswordInput(
@@ -418,4 +507,18 @@ fun ResetPassword(
 ) {
     Text("ResetPasswordUI")
     // TODO: 비밀번호 재설정 구현
+}
+
+@Composable
+fun Next() {
+    // TODO: Implement "Next" screen
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("WOW! Welcome to the Next Screen.")
+    }
 }
