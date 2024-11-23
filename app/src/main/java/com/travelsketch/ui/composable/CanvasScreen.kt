@@ -1,18 +1,24 @@
 package com.travelsketch.ui.composable
 
+import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import com.travelsketch.data.model.Box
 import com.travelsketch.viewmodel.CanvasViewModel
 
 @Composable
 fun CanvasScreen(viewModel: CanvasViewModel) {
+
     // import androidx.compose.runtime.getValue
     // can make state variables to r/w
 
@@ -22,6 +28,23 @@ fun CanvasScreen(viewModel: CanvasViewModel) {
     val scale by viewModel.scale
     val offsetX by viewModel.offsetX
     val offsetY by viewModel.offsetY
+    var boxes = mutableListOf(Box(
+        boxX = 120,
+        boxY = 200,
+        boxZ = 0,
+        data = "text_content_here",
+        degree = 0,
+        height = 150,
+        latitude = 37.71513,
+        longitude = 126.734086,
+        time = 163816092,
+        type = "TEXT",
+        width = 300
+    ), Box(
+
+    ))
+    val isEditable by viewModel.isEditable
+
 
     Canvas(
         modifier = Modifier
@@ -81,6 +104,33 @@ fun CanvasScreen(viewModel: CanvasViewModel) {
             },
         onDraw = {
             drawRect(color = Color.White)
+
+            boxes.forEach { box ->
+                if (box.type == "TEXT") {
+                    val x = box.boxX.toFloat()
+                    val y = box.boxY.toFloat()
+
+                    drawIntoCanvas { canvas ->
+                        val paint = Paint().apply {
+                            color = android.graphics.Color.BLACK
+                            textSize = 40f
+                            textAlign = Paint.Align.LEFT
+                            typeface = android.graphics.Typeface.DEFAULT_BOLD
+                        }
+                        canvas.nativeCanvas.drawText(
+                            box.data,
+                            x, y, paint
+                        )
+                    }
+                }
+            }
         }
     )
+    Button(
+        onClick = {
+            viewModel.toggleIsEditable()
+        }
+    ) { }
+    if (isEditable)
+        Editor()
 }
