@@ -1,22 +1,29 @@
 package com.travelsketch.ui.activity
 
+import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
-import com.travelsketch.ui.composable.MapViewScreen
-import com.travelsketch.viewmodel.MapViewModel
+import androidx.appcompat.app.AppCompatActivity
+import com.travelsketch.ui.composable.HostMapAndMapViewFragments
 
-class MapViewActivity : ComponentActivity() {
-    private val viewModel: MapViewModel by viewModels()
+class MapViewActivity : AppCompatActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val canvas_id : String = "1"
-        viewModel.fetchCanvasData(canvasId = "${canvas_id}")
+
+        // Intent를 통해 로드할 Fragment 결정
+        val initialFragment = intent.getStringExtra("FRAGMENT") ?: "MAP_SETUP"
 
         setContent {
-            MapViewScreen(viewModel = viewModel)
+            HostMapAndMapViewFragments(
+                fragmentManager = supportFragmentManager,
+                initialFragment = initialFragment // 초기 Fragment 전달
+            )
         }
     }
-}
 
+    fun navigateToListViewActivity() {
+        val intent = Intent(this, ListViewActivity::class.java)
+        startActivity(intent)
+    }
+}

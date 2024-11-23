@@ -1,20 +1,14 @@
-package com.travelsketch.ui.composable
-
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
@@ -23,11 +17,15 @@ import androidx.compose.ui.unit.sp
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.travelsketch.ui.composable.CenterMarker
+import com.travelsketch.ui.composable.Map
 import com.travelsketch.viewmodel.MapViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapSetupScreen(onLocationConfirmed: (LatLng) -> Unit = {},
-                   mapViewModel: MapViewModel
+fun MapSetupScreen(
+    onLocationConfirmed: (LatLng) -> Unit = {},
+    mapViewModel: MapViewModel
 ) {
     val initialPosition = LatLng(37.7749, 126.9780) // 기본 위치 (서울)
     val cameraPositionState = rememberCameraPositionState {
@@ -38,65 +36,83 @@ fun MapSetupScreen(onLocationConfirmed: (LatLng) -> Unit = {},
     var selectedPosition by remember { mutableStateOf(initialPosition) }
     var markerLocationName by remember { mutableStateOf("Unknown Location") }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            text = "지도 캔버스의 초기 위치를 선택해주세요.",
-            fontSize = 24.sp,
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            textAlign = TextAlign.Center
-        )
-
-        TextField(
-            value = searchText,
-            onValueChange = { searchText = it },
-            placeholder = { Text(text = "검색: 대한민국") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-
-        // 마커의 위치 표시
-        Text(
-            text = "위치: $markerLocationName",
-            fontSize = 16.sp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            textAlign = TextAlign.Start,
-            color = Color.Gray
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(horizontal = 16.dp)
+                .fillMaxSize()
         ) {
-            Map(
-                modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState
+            Text(
+                text = "캔버스의 초기 위치를 선택해주세요.",
+                fontSize = 24.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                textAlign = TextAlign.Center
             )
-            CenterMarker()
+
+            TextField(
+                value = searchText,
+                onValueChange = { searchText = it },
+                placeholder = { Text(text = "검색: 대한민국") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                colors = TextFieldDefaults.textFieldColors(
+                    containerColor = Color.LightGray, // 배경색 설정
+                    cursorColor = Color.Black, // 커서 색상
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                ),
+                shape = RoundedCornerShape(8.dp) // 모서리를 둥글게 설정
+            )
+
+            Text(
+                text = "위치: $markerLocationName",
+                fontSize = 16.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                textAlign = TextAlign.Start,
+                color = Color.Gray
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 16.dp)
+            ) {
+                Map(
+                    modifier = Modifier.fillMaxSize(),
+                    cameraPositionState = cameraPositionState
+                )
+                CenterMarker()
+            }
         }
 
+        // 버튼을 절대 위치로 하단 고정
         Button(
-            onClick = { // 현재 위치 데이터를 Firebase로 전송
+            onClick = {
                 val canvas_id = "canvas_5" // 임의 값
                 val avg_gps_latitude = selectedPosition.latitude
                 val avg_gps_longitude = selectedPosition.longitude
 
-                mapViewModel.createMapData(
-                    canvasId = canvas_id,
-                    avgGpsLatitude = avg_gps_latitude,
-                    avgGpsLongitude = avg_gps_longitude
-                )
-                onLocationConfirmed(selectedPosition) },// 선택 위치 콜백 호출 },
+//                mapViewModel.createMapCanvasData(
+//                    canvasId = canvas_id,
+//                    avgGpsLatitude = avg_gps_latitude,
+//                    avgGpsLongitude = avg_gps_longitude
+//                )
+                onLocationConfirmed(selectedPosition)
+            },
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .height(48.dp)
+                .absoluteOffset(x = 0.dp, y = (-32).dp) // 화면 아래 고정
+                .width(110.dp) // 너비 고정
+                .height(48.dp) // 높이 고정
+                .align(Alignment.BottomCenter),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFD6D6D6),
+                contentColor = Color.Black // 텍스트 색상
+            )
         ) {
             Text(text = "확인")
         }
@@ -112,5 +128,8 @@ fun MapSetupScreen(onLocationConfirmed: (LatLng) -> Unit = {},
 }
 
 fun getLocationName(position: LatLng): String {
-    return "위도: ${position.latitude}, 경도: ${position.longitude}"
+    val latitude = String.format("%.5f", position.latitude)
+    val longitude = String.format("%.5f", position.longitude)
+    return "위도: $latitude, 경도: $longitude"
 }
+
