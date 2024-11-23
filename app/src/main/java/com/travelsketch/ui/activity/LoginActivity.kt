@@ -6,27 +6,27 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.travelsketch.R
-import com.travelsketch.ui.composable.PasswordField
-import com.travelsketch.ui.composable.PhoneNumberInput
-import com.travelsketch.ui.composable.PhoneNumberState
+import com.travelsketch.ui.composable.FindID
+import com.travelsketch.ui.composable.Login
+import com.travelsketch.ui.composable.NewPasswordInput
+import com.travelsketch.ui.composable.ResetPassword
+import com.travelsketch.ui.composable.SignUp
 import com.travelsketch.ui.layout.UserLayout
 import com.travelsketch.viewmodel.LoginViewModel
 
@@ -63,7 +63,7 @@ class LoginActivity : ComponentActivity() {
         loginViewModel.userReload()
 
         if (loginViewModel.currentUser() != null) {
-            loginViewModel.setCurrentScreen("Next")
+            loginViewModel.setCurrentScreen("SelectViewType")
         } else {
             loginViewModel.setCurrentScreen("Login")
         }
@@ -76,7 +76,7 @@ class LoginActivity : ComponentActivity() {
             BackHandler {
                 if (loginViewModel.currentUser() != null) {
                     //로그인 시 메인화면
-                    loginViewModel.setCurrentScreen("Next")
+                    loginViewModel.setCurrentScreen("SelectViewType")
                 } else {
                     //로그인 전 메인화면
                     loginViewModel.setCurrentScreen("Login")
@@ -96,7 +96,8 @@ class LoginActivity : ComponentActivity() {
                     "RegistrationSuccess" -> "Registration Successful"
                     "FindID" -> "FindID"
                     "ResetPassword" -> "ResetPassword"
-                    "Next" -> "Next"
+                    "NewPasswordInput" -> "NewPasswordInput"
+                    "SelectViewType" -> "SelectViewType"
                     else -> "Login"
                 },
                 snackbarHostState = snackbarHostState
@@ -120,9 +121,6 @@ class LoginActivity : ComponentActivity() {
                                 loginViewModel.registerUser(email, password, phoneNumber)
                             }
                         )
-                        "RegistrationSuccess" -> RegistrationSuccessScreen(
-                            onLoginClick = { loginViewModel.setCurrentScreen("Login") }
-                        )
                         "FindID" -> FindID(
                             onFindIDClick = {
                                 /* TODO: FindID 연결 */
@@ -130,10 +128,11 @@ class LoginActivity : ComponentActivity() {
                         )
                         "ResetPassword" -> ResetPassword(
                             onResetPasswordClick = {
-                                /* TODO: ResetPassword 연결 */
+                                loginViewModel.setCurrentScreen("NewPasswordInput")
                             }
                         )
-                        "Next" -> Next()
+                        "NewPasswordInput" -> NewPasswordInput()
+                        "SelectViewType" -> SelectViewType()
                     }
                     if (isLoading) {
                         CircularProgressIndicator(
@@ -149,376 +148,60 @@ class LoginActivity : ComponentActivity() {
 }
 
 @Composable
-fun Login(
-    onSignUpClick: () -> Unit,
-    onLoginClick: (email: String, password: String) -> Unit,
-    onFindIDClick: () -> Unit,
-    onResetPasswordClick: () -> Unit,
-    onGoogleLoginClick: () -> Unit
-) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    val emailFocusRequester = remember { FocusRequester() }
-
+fun SelectViewType() {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-    ) {
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(emailFocusRequester)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            modifier = Modifier.fillMaxWidth(),
-            visualTransformation = PasswordVisualTransformation()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.End
-        ) {
-            // Find ID
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Divider(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(1.dp),
-                    color = Color.Gray
-                )
-                Text(
-                    text = "Find ID",
-                    modifier = Modifier
-                        .padding(horizontal = 8.dp)
-                        .clickable {
-                            onFindIDClick()
-                            // TODO: Find ID 연결
-                        },
-                    color = Color.Blue
-                )
-                Divider(
-                    modifier = Modifier
-                        .width(24.dp)
-                        .height(1.dp),
-                    color = Color.Gray
-                )
-            }
-
-            // Reset Password
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Divider(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(1.dp),
-                    color = Color.Gray
-                )
-                Text(
-                    text = "Reset Password",
-                    modifier = Modifier
-                        .padding(horizontal = 8.dp)
-                        .clickable {
-                            onResetPasswordClick()
-                        },
-                    color = Color.Blue
-                )
-                Divider(
-                    modifier = Modifier
-                        .width(24.dp)
-                        .height(1.dp),
-                    color = Color.Gray
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = {
-                if (email.isEmpty()) {
-                    emailFocusRequester.requestFocus()
-                } else {
-                    onLoginClick(email, password)
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Login")
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        TextButton(
-            onClick = { onSignUpClick() },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Sign Up")
-        }
-
-        Image(
-            painter = painterResource(id = R.drawable.continue_with_google),
-            contentDescription = "Continue with Google",
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onGoogleLoginClick() }
-        )
-
-    }
-}
-
-@Composable
-fun SignUp(
-    onRegisterClick: (email: String, password: String, phoneNumber: String) -> Unit
-) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var phoneNumberState by remember { mutableStateOf(PhoneNumberState()) }
-    var showEmailError by remember { mutableStateOf(false) }
-    var showConfirmPasswordError by remember { mutableStateOf(false) }
-
-    val isPasswordMatching = password == confirmPassword && confirmPassword.isNotEmpty()
-    val emailFocusRequester = remember { FocusRequester() }
-    val passwordFocusRequester = remember { FocusRequester() }
-    val confirmPasswordFocusRequester = remember { FocusRequester() }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center
-    ) {
-        // Email Input
-        OutlinedTextField(
-            value = email,
-            onValueChange = {
-                email = it
-                if (showEmailError) showEmailError = false
-            },
-            label = { Text("Email") },
-            isError = showEmailError,
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(emailFocusRequester)
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(20.dp)
-        ) {
-            if (showEmailError) {
-                Text(
-                    text = "Please enter a valid email.",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.align(Alignment.CenterStart)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Password Input
-        PasswordInput(
-            password = password,
-            onPasswordChange = { password = it },
-            confirmPassword = confirmPassword,
-            onConfirmPasswordChange = {
-                confirmPassword = it
-                if (showConfirmPasswordError) showConfirmPasswordError = false
-            },
-            isPasswordMatching = isPasswordMatching,
-            showConfirmPasswordError = showConfirmPasswordError,
-            passwordFocusRequester = passwordFocusRequester,
-            confirmPasswordFocusRequester = confirmPasswordFocusRequester
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Phone Number Input
-        PhoneNumberInput(
-            phoneNumber = phoneNumberState,
-            onPhoneNumberChange = { phoneNumberState = it }
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Sign Up Button
-        Button(
-            onClick = {
-                val fullPhoneNumber = phoneNumberState.fullNumber()
-                when {
-                    !email.matches(Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) -> {
-                        showEmailError = true
-                        emailFocusRequester.requestFocus()
-                    }
-                    password.isEmpty() -> {
-                        passwordFocusRequester.requestFocus()
-                    }
-                    confirmPassword.isEmpty() || !isPasswordMatching -> {
-                        showConfirmPasswordError = true
-                        confirmPasswordFocusRequester.requestFocus()
-                    }
-                    fullPhoneNumber.isEmpty() -> {
-                    }
-                    else -> {
-                        onRegisterClick(email, password, fullPhoneNumber)
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Sign Up")
-        }
-    }
-}
-
-@Composable
-fun PasswordInput(
-    password: String,
-    onPasswordChange: (String) -> Unit,
-    confirmPassword: String,
-    onConfirmPasswordChange: (String) -> Unit,
-    isPasswordMatching: Boolean,
-    showConfirmPasswordError: Boolean,
-    passwordFocusRequester: FocusRequester,
-    confirmPasswordFocusRequester: FocusRequester
-) {
-    PasswordField(
-        label = "Password",
-        password = password,
-        onPasswordChange = onPasswordChange,
-        modifier = Modifier
-            .fillMaxWidth()
-            .focusRequester(passwordFocusRequester)
-    )
-
-    Spacer(modifier = Modifier.height(4.dp))
-
-    PasswordField(
-        label = "Confirm Password",
-        password = confirmPassword,
-        onPasswordChange = onConfirmPasswordChange,
-        modifier = Modifier
-            .fillMaxWidth()
-            .focusRequester(confirmPasswordFocusRequester)
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(20.dp)
-    ) {
-        if (showConfirmPasswordError && !isPasswordMatching) {
-            Text(
-                text = "Passwords do not match.",
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-    }
-}
-
-@Composable
-fun RegistrationSuccessScreen(onLoginClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center
+//        verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = "Registration successful! Please log in.",
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.fillMaxWidth()
+            text = "Select your canvas view type",
+            style = TextStyle(
+                fontSize = 32.sp
+            )
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = onLoginClick,
-            modifier = Modifier.fillMaxWidth()
+        IconButton(
+            onClick = {},
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp)
+                .padding(8.dp)
         ) {
-            Text("Go to Login Screen")
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(color = Color.LightGray, shape = RoundedCornerShape(4.dp))
+            ) {
+                Text(
+                    text = "Map View",
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
         }
-    }
-}
 
-@Composable
-fun FindID(
-    onFindIDClick: () -> Unit
-) {
-    var phoneNumberState by remember { mutableStateOf(PhoneNumberState()) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center
-    ) {
-        PhoneNumberInput(
-            phoneNumber = phoneNumberState,
-            onPhoneNumberChange = { phoneNumberState = it }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = {
-                val fullPhoneNumber = phoneNumberState.fullNumber()
-                if (fullPhoneNumber.isNotEmpty()) {
-                    onFindIDClick()
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
+        IconButton(
+            onClick = {},
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp)
+                .padding(8.dp)
         ) {
-            Text("Find ID")
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(color = Color.Gray, shape = RoundedCornerShape(4.dp))
+            ) {
+                Text(
+                    text = "List View",
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
         }
-    }
-}
-
-@Composable
-fun ResetPassword(
-    onResetPasswordClick: () -> Unit
-) {
-    Text("ResetPasswordUI")
-    // TODO: 비밀번호 재설정 구현
-}
-
-@Composable
-fun Next() {
-    // TODO: Implement "Next" screen
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("WOW! Welcome to the Next Screen.")
     }
 }

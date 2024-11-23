@@ -41,8 +41,8 @@ class LoginViewModel : ViewModel() {
             .addOnCompleteListener { task ->
                 _isLoading.value = false
                 if (task.isSuccessful) {
-                    setCurrentScreen("Next")
                     showSnackbar("Login successful!")
+                    setCurrentScreen("SelectViewType")
                 } else {
                     showSnackbar("Login failed: ${task.exception?.message}")
                 }
@@ -64,7 +64,7 @@ class LoginViewModel : ViewModel() {
                 )
                 firebaseDatabase.reference.child("users").child(userId).setValue(user).await()
 
-                _currentScreen.value = "RegistrationSuccess"
+//                _currentScreen.value = "RegistrationSuccess"
                 _eventFlow.emit("Registration successful!")
             } catch (e: Exception) {
                 _eventFlow.emit("Registration failed: ${e.localizedMessage ?: e.message}")
@@ -130,4 +130,6 @@ class LoginViewModel : ViewModel() {
         firebaseAuth.signOut()
         firebaseAuth.currentUser?.reload()
     }
+
+
 }

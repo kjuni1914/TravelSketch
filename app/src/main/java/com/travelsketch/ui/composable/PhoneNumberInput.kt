@@ -3,7 +3,6 @@ package com.travelsketch.ui.composable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -11,7 +10,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -70,13 +68,13 @@ fun PhoneNumberInput(
             }
         }
 
-        Divider(
-            modifier = Modifier
-                .weight(0.5f)
-                .height(1.dp)
-                .align(Alignment.CenterVertically),
-            color = Color.Gray
-        )
+//        Divider(
+//            modifier = Modifier
+//                .weight(0.5f)
+//                .height(1.dp)
+//                .align(Alignment.CenterVertically),
+//            color = Color.Gray
+//        )
 
         OutlinedTextField(
             value = phoneNumber.part2,
@@ -95,13 +93,13 @@ fun PhoneNumberInput(
             textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontSize = 18.sp)
         )
 
-        Divider(
-            modifier = Modifier
-                .weight(0.5f)
-                .height(1.dp)
-                .align(Alignment.CenterVertically),
-            color = Color.Gray
-        )
+//        Divider(
+//            modifier = Modifier
+//                .weight(0.5f)
+//                .height(1.dp)
+//                .align(Alignment.CenterVertically),
+//            color = Color.Gray
+//        )
 
 
         OutlinedTextField(
