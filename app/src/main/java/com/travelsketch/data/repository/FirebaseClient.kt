@@ -199,6 +199,4 @@ object FirebaseClient: DatabaseClient {
     override suspend fun deleteUser(userId: String) {
         database.child("users").child(userId).removeValue().await()
     }
-
-
 }
