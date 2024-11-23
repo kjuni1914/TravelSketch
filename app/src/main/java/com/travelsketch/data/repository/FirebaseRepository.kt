@@ -10,10 +10,10 @@ class FirebaseMapRepository {
     private val database = FirebaseDatabase.getInstance().reference
 
     // Canvas 데이터 읽기
-    suspend fun fetchCanvasData(canvasId: String): MapData? {
+    suspend fun readMapCanvasData(canvasId: String): MapData? {
         return try {
             val snapshot = database.child("map").child(canvasId).get().await()
-            parseCanvasData(snapshot)
+            parseMapCanvasData(snapshot)
         } catch (e: Exception) {
             Log.e("FirebaseRepository", "Failed to fetch data for $canvasId", e)
             null
@@ -21,7 +21,7 @@ class FirebaseMapRepository {
     }
 
     // Canvas 데이터 생성
-    suspend fun createCanvasData(
+    suspend fun createMapCanvasData(
         canvasId: String,
         avgGpsLatitude: Double,
         avgGpsLongitude: Double
@@ -43,7 +43,7 @@ class FirebaseMapRepository {
     }
 
     // Firebase Snapshot을 CanvasData로 변환
-    private fun parseCanvasData(snapshot: DataSnapshot): MapData {
+    private fun parseMapCanvasData(snapshot: DataSnapshot): MapData {
         val previewBoxId = snapshot.child("preview_box_id").getValue(String::class.java) ?: ""
         val avgGpsLatitude = snapshot.child("avg_gps_latitude").getValue(Double::class.java) ?: 0.0
         val avgGpsLongitude = snapshot.child("avg_gps_longitude").getValue(Double::class.java) ?: 0.0
