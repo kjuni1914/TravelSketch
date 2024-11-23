@@ -54,6 +54,8 @@ android {
 }
 
 dependencies {
+    implementation("androidx.compose.material:material-icons-extended:1.5.1") // 준희 // 비밀번호 보이기|가리기 버튼
+    implementation("com.google.android.gms:play-services-auth:20.7.0") // 준희 // 구글 로그인 API
     implementation("com.google.dagger:hilt-android:2.51.1")
     kapt("com.google.dagger:hilt-android-compiler:2.51.1")
     implementation("com.kakao.sdk:v2-all:2.20.6") // 전체 모듈 설치, 2.11.0 버전부터 지원
