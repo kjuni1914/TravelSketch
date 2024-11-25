@@ -4,23 +4,31 @@ import ListElementData
 import ListViewScreen
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.travelsketch.viewmodel.ListViewModel
 
 class ListViewActivity : ComponentActivity() {
+
+    private val viewModel: ListViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            ListViewScreen(
-                items = listOf(
-                    ListElementData("일본 여행"),
-                    ListElementData("스페인 여행"),
-                    ListElementData("일본 여행"),
-                    ListElementData("스페인 여행"),
-                    ListElementData("일본 여행"),
-                    ListElementData("스페인 여행")
 
-                ),
+        viewModel.readAllMapCanvasData()
+
+        setContent {
+            val canvasList by viewModel.canvasList.collectAsState() // 전체 Canvas 데이터 관찰
+
+            // Canvas 데이터를 ListElementData로 변환
+            val items = canvasList.map { ListElementData(it.title) }
+
+            ListViewScreen(
+                items = items,
                 onNavigateToListView = { navigateToMapViewActivity() }
             )
         }
