@@ -32,9 +32,15 @@ fun MapSetupScreen(
         position = CameraPosition.fromLatLngZoom(initialPosition, 15f)
     }
 
-    var searchText by remember { mutableStateOf("") }
+//    var searchText by remember { mutableStateOf("") }
     var selectedPosition by remember { mutableStateOf(initialPosition) }
     var markerLocationName by remember { mutableStateOf("Unknown Location") }
+    var mapCanvasTitle by remember { mutableStateOf("") } // 제목 입력 필드 상태
+    var canvasId by remember { mutableStateOf("") } // Firebase에서 가져올 canvas_id 상태
+
+    LaunchedEffect(Unit) {
+        canvasId = mapViewModel.getNextCanvasId() // ViewModel에서 canvas_id 가져오기
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -50,10 +56,25 @@ fun MapSetupScreen(
                 textAlign = TextAlign.Center
             )
 
+//            TextField(
+//                value = searchText,
+//                onValueChange = { searchText = it },
+//                placeholder = { Text(text = "검색: 대한민국") },
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(horizontal = 16.dp, vertical = 8.dp),
+//                colors = TextFieldDefaults.textFieldColors(
+//                    containerColor = Color.LightGray, // 배경색 설정
+//                    cursorColor = Color.Black, // 커서 색상
+//                    focusedIndicatorColor = Color.Transparent,
+//                    unfocusedIndicatorColor = Color.Transparent
+//                ),
+//                shape = RoundedCornerShape(8.dp) // 모서리를 둥글게 설정
+//            )
             TextField(
-                value = searchText,
-                onValueChange = { searchText = it },
-                placeholder = { Text(text = "검색: 대한민국") },
+                value = mapCanvasTitle,
+                onValueChange = { mapCanvasTitle = it },
+                placeholder = { Text(text = "캔버스 제목을 입력하세요") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -93,15 +114,17 @@ fun MapSetupScreen(
         // 버튼을 절대 위치로 하단 고정
         Button(
             onClick = {
-                val canvas_id = "canvas_5" // 임의 값
+                val canvas_id = canvasId // 임의 값
                 val avg_gps_latitude = selectedPosition.latitude
                 val avg_gps_longitude = selectedPosition.longitude
+                val map_canvas_title = mapCanvasTitle
 
-//                mapViewModel.createMapCanvasData(
-//                    canvasId = canvas_id,
-//                    avgGpsLatitude = avg_gps_latitude,
-//                    avgGpsLongitude = avg_gps_longitude
-//                )
+                mapViewModel.createMapCanvasData(
+                    canvasId = canvas_id,
+                    avgGpsLatitude = avg_gps_latitude,
+                    avgGpsLongitude = avg_gps_longitude,
+                    title = map_canvas_title
+                )
                 onLocationConfirmed(selectedPosition)
             },
             modifier = Modifier

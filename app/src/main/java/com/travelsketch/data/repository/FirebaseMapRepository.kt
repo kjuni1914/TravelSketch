@@ -52,7 +52,8 @@ class FirebaseMapRepository {
     suspend fun createMapCanvasData(
         canvasId: String,
         avgGpsLatitude: Double,
-        avgGpsLongitude: Double
+        avgGpsLongitude: Double,
+        title : String
     ) {
         val data = mapOf(
             "avg_gps_latitude" to avgGpsLatitude,
@@ -60,7 +61,7 @@ class FirebaseMapRepository {
             "is_visible" to false,
             "preview_box_id" to "box_0",
             "range" to 0,
-            "title" to "여행"
+            "title" to title
         )
 
         try {

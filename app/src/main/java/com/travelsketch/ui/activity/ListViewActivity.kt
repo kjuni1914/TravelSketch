@@ -24,12 +24,12 @@ class ListViewActivity : ComponentActivity() {
         setContent {
             val canvasList by viewModel.canvasList.collectAsState() // 전체 Canvas 데이터 관찰
 
-            // Canvas 데이터를 ListElementData로 변환
             val items = canvasList.map { ListElementData(it.title) }
 
             ListViewScreen(
                 items = items,
-                onNavigateToListView = { navigateToMapViewActivity() }
+                onNavigateToListView = { navigateToMapViewActivity() },
+                onNavigateToMapSetup = { navigateToMapSetupActivity() } // 새로운 콜백
             )
         }
 
@@ -39,6 +39,13 @@ class ListViewActivity : ComponentActivity() {
         // MapViewActivity로 전환하며 MapViewFragment 요청
         val intent = Intent(this, MapViewActivity::class.java).apply {
             putExtra("FRAGMENT", "MAP_VIEW") // MapViewFragment 요청
+        }
+        startActivity(intent)
+    }
+
+    fun navigateToMapSetupActivity() {
+        val intent = Intent(this, MapViewActivity::class.java).apply {
+            putExtra("FRAGMENT", "MAP_SETUP") // MapSetupFragment 요청
         }
         startActivity(intent)
     }

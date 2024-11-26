@@ -2,14 +2,17 @@
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 data class ListElementData(
     val title: String,
@@ -18,7 +21,9 @@ data class ListElementData(
 @Composable
 fun ListViewScreen(
     items: List<ListElementData>,
-    onNavigateToListView: () -> Unit
+    onNavigateToListView: () -> Unit,
+    onNavigateToMapSetup: () -> Unit
+
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         // 리스트는 상단부터 시작
@@ -47,6 +52,21 @@ fun ListViewScreen(
             )
         ) {
             Text(text = "Map View")
+        }
+        FloatingActionButton(
+            onClick = { onNavigateToMapSetup() }, // 새로운 콜백 호출
+            modifier = Modifier
+                .align(Alignment.BottomEnd) // 오른쪽 하단 정렬
+                .padding(16.dp), // 화면 경계로부터 여백
+            containerColor = Color(0xFF6200EE), // 버튼 배경색
+            contentColor = Color.White, // 아이콘 또는 텍스트 색상
+            shape = CircleShape // 동그란 모양
+        ) {
+            Text(
+                text = "+", // "+" 텍스트 표시
+                color = Color.White,
+                fontSize = 24.dp.value.sp // 텍스트 크기 설정
+            )
         }
     }
 }

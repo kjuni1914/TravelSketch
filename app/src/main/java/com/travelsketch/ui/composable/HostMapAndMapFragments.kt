@@ -2,6 +2,7 @@ package com.travelsketch.ui.composable
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.commit
 import com.travelsketch.ui.fragment.MapSetupFragment
@@ -24,8 +25,7 @@ fun HostMapAndMapViewFragments(
         }
     }
 
-    // Compose 내에서 Fragment 호스팅
-    androidx.compose.ui.viewinterop.AndroidView(factory = { context ->
+    AndroidView(factory = { context ->
         val container = android.widget.FrameLayout(context).apply {
             id = android.view.View.generateViewId() // 동적 ID 생성
         }
@@ -35,3 +35,4 @@ fun HostMapAndMapViewFragments(
         container
     })
 }
+
