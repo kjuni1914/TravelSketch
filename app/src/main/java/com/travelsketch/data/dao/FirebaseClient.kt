@@ -2,6 +2,7 @@ package com.travelsketch.data.dao
 
 import android.net.Uri
 import android.util.Log
+import androidx.compose.animation.core.snap
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.getValue
@@ -13,6 +14,7 @@ import com.travelsketch.data.model.UserData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -23,212 +25,152 @@ object FirebaseClient: DatabaseClient {
     override val storageRef: StorageReference
         get() = FirebaseStorage.getInstance().reference
 
-    override suspend fun createCanvasData(canvasId:String, canvasData: CanvasData) {
-        enterCoroutineScopeWithIODispatcher {
-            databaseRef.child("map").child(canvasId).setValue(canvasData)
-                .addOnSuccessListener {
-                    Log.d("CanvasActivity", "Create $canvasId")
-                }.addOnFailureListener {
-                    Log.d("CanvasActivity", "Fail to add $canvasId")
-                }
+    override suspend fun writeCanvasData(
+        canvasId: String,
+        canvasData: CanvasData
+    ): Boolean {
+        return try {
+            databaseRef.child("map").child(canvasId).setValue(canvasData).await()
+            true
+        } catch (e: Exception) {
+            Log.d("ITM", "DAO Error: $e")
+            false
         }
     }
 
     override suspend fun readCanvasData(canvasId: String): CanvasData? {
-        return suspendCoroutine { continuation ->
-            databaseRef.child("map").child(canvasId).get()
-                .addOnSuccessListener { dataSnapshot ->
-                    try {
-                        val canvasData = dataSnapshot.getValue<CanvasData>()
-                            ?: throw Exception("$canvasId not found")
-                        continuation.resume(canvasData)
-                    } catch (e: Exception) {
-                        continuation.resumeWithException(e)
-                    }
-                }.addOnFailureListener {
-                    Log.d("CanvasActivity", "$canvasId is not existed")
-                    continuation.resume(null)
-                }
+        return try {
+            val snapshot = databaseRef.child("map").child(canvasId).get().await()
+            if (snapshot.exists())
+                snapshot.getValue(CanvasData::class.java)
+            else
+                null
+        } catch (e: Exception) {
+            Log.d("ITM", "DAO Error: $e")
+            null
         }
     }
 
-    override suspend fun updateCanvasData(canvasId: String, canvasData: CanvasData) {
-        enterCoroutineScopeWithIODispatcher {
-            databaseRef.child("map").child(canvasId).setValue(canvasData)
-                .addOnSuccessListener {
-                    Log.d("CanvasActivity", "Update $canvasId")
-                }.addOnFailureListener {
-                    Log.d("CanvasActivity", "Fail to update $canvasId")
+    override suspend fun readAllCanvasData(): List<CanvasData>? {
+        return try {
+            val snapshot = databaseRef.child("map").get().await()
+            val canvasDataList = mutableListOf<CanvasData>()
+
+            if (snapshot.exists()) {
+                snapshot.children.forEach { child ->
+                    val data = child.getValue(CanvasData::class.java)
+                    if (data != null)
+                        canvasDataList.add(data)
                 }
+            }
+
+            canvasDataList
+        } catch (e: Exception) {
+            Log.d("ITM", "DAO Error: $e")
+            null
         }
     }
 
-    override suspend fun deleteCanvasData(canvasId: String) {
-        enterCoroutineScopeWithIODispatcher {
-            databaseRef.child("map").child(canvasId).removeValue()
-            databaseRef.child("canvas").child(canvasId).removeValue()
+    override suspend fun deleteCanvasData(canvasId: String): Boolean {
+        return try {
+            databaseRef.child("map").child(canvasId).removeValue().await()
+            true
+        } catch (e: Exception) {
+            Log.d("ITM", "DAO Error: $e")
+            false
         }
     }
 
-    override suspend fun createBoxData(canvasId:String, boxId:String, boxData: BoxData) {
-        enterCoroutineScopeWithIODispatcher {
-            databaseRef.child("canvas").child(canvasId).child(boxId).setValue(boxData)
-                .addOnSuccessListener {
-                    Log.d("CanvasActivity", "Create $canvasId")
-                }.addOnFailureListener {
-                    Log.d("CanvasActivity", "Fail to add $canvasId")
-                }
+    override suspend fun writeBoxData(
+        canvasId: String,
+        boxId: String,
+        boxData: BoxData
+    ): Boolean {
+        return try {
+            databaseRef.child("canvas").child(canvasId).setValue(boxData).await()
+            true
+        } catch (e: Exception) {
+            Log.d("ITM", "DAO Error: $e")
+            false
         }
     }
 
     override suspend fun readBoxData(canvasId: String, boxId: String): BoxData? {
-        return suspendCoroutine { continuation ->
-            databaseRef.child(canvasId).child(boxId).get()
-                .addOnSuccessListener { dataSnapshot ->
-                    try {
-                        val box = dataSnapshot.getValue<BoxData>()
-                            ?: throw Exception("$boxId cannot found")
-                        continuation.resume(box)
-                    } catch (e: Exception) {
-                        continuation.resumeWithException(e)
-                    }
-                }.addOnFailureListener {
-                    Log.d("CanvasActivity", "$boxId is not existed")
-                    continuation.resume(null)
-                }
+        return try {
+            val snapshot = databaseRef.child("canvas").child(canvasId).child(boxId).get().await()
+
+            if (snapshot.exists())
+                snapshot.getValue(BoxData::class.java)
+            else
+                null
+
+        } catch (e: Exception) {
+            Log.d("ITM", "DAO Error: $e")
+            null
         }
     }
 
-    override suspend fun updateBoxData(canvasId: String, boxId:String, boxData: BoxData) {
-        enterCoroutineScopeWithIODispatcher {
-            databaseRef.child("canvas").child(canvasId).child(boxId).setValue(boxData)
-                .addOnSuccessListener {
-                    Log.d("CanvasActivity", "Update $boxId")
-                }.addOnFailureListener {
-                    Log.d("CanvasActivity", "Fail to update $boxId")
+    override suspend fun readAllBoxData(canvasId: String): List<BoxData>? {
+        return try {
+            val snapshot = databaseRef.child("canvas").child(canvasId).get().await()
+            val canvasDataList = mutableListOf<BoxData>()
+
+            if (snapshot.exists()) {
+                snapshot.children.forEach { child ->
+                    val boxData = child.getValue(BoxData::class.java)
+                    if (boxData != null)
+                        canvasDataList.add(boxData)
                 }
+            }
+
+            canvasDataList
+
+        } catch (e: Exception) {
+            Log.d("ITM", "DAO Error: $e")
+            null
         }
     }
 
-    override suspend fun deleteBoxData(canvasId: String, boxId: String) {
-        enterCoroutineScopeWithIODispatcher {
-            databaseRef.child("canvas").child(canvasId).child(boxId).removeValue()
+    override suspend fun deleteBoxData(canvasId: String, boxId: String): Boolean {
+        return try {
+            databaseRef.child("canvas").child(canvasId).child(boxId).removeValue().await()
+            true
+        } catch (e: Exception) {
+            Log.d("ITM", "$e")
+            false
         }
     }
 
-    override suspend fun createUserData(userId: String, userData: UserData) {
-        enterCoroutineScopeWithIODispatcher {
-            databaseRef.child("users").child(userId).setValue(userData)
-                .addOnSuccessListener {
-                    Log.d("CanvasActivity", "Create $userId")
-                }.addOnFailureListener {
-                    Log.d("CanvasActivity", "Fail to add $userId")
-                }
+    override suspend fun writeUserData(userId: String, userData: UserData): Boolean {
+        return try {
+            databaseRef.child("users").child(userId).setValue(userData).await()
+            true
+        } catch (e: Exception) {
+            Log.d("ITM", "$e")
+            false
         }
     }
 
     override suspend fun readUserData(userId: String): UserData? {
-        return suspendCoroutine { continuation ->
-            databaseRef.child("users").child(userId).get()
-                .addOnSuccessListener { dataSnapshot ->
-                    try {
-                        val user = dataSnapshot.getValue<UserData>()
-                            ?: throw Exception("$userId cannot found")
-                        continuation.resume(user)
-                    } catch (e: Exception) {
-                        continuation.resumeWithException(e)
-                    }
-                }.addOnFailureListener {
-                    Log.d("CanvasActivity", "$userId is not existed")
-                    continuation.resume(null)
-                }
+        return try {
+            val snapshot = databaseRef.child("users").child(userId).get().await()
+
+            if (snapshot.exists())
+                snapshot.getValue<UserData>()
+            else
+                null
+        } catch (e: Exception) {
+            null
         }
     }
 
-    override suspend fun updateUserData(userId: String, userData: UserData) {
-        enterCoroutineScopeWithIODispatcher {
-            databaseRef.child("users").child(userId).setValue(userData)
-                .addOnSuccessListener {
-                    Log.d("CanvasActivity", "Update $userId")
-                }.addOnFailureListener {
-                    Log.d("CanvasActivity", "Fail to update $userId")
-                }
+    override suspend fun deleteUserData(userId: String): Boolean {
+        return try {
+            databaseRef.child("users").child(userId).removeValue().await()
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 
-    override suspend fun deleteUserData(userId: String) {
-        enterCoroutineScopeWithIODispatcher {
-            databaseRef.child("users").child(userId).removeValue()
-        }
-    }
-
-    override suspend fun createImageData(boxId: String, imageUri: Uri) {
-        enterCoroutineScopeWithIODispatcher {
-            storageRef.child("media").child("image").child("$boxId.jpg")
-                .putFile(imageUri).addOnSuccessListener {
-                    Log.d("CanvasActivity", "Create $boxId")
-                }.addOnFailureListener {
-                    Log.d("CanvasActivity", "Fail to update $boxId image")
-                }
-        }
-    }
-
-    override suspend fun readImageData(boxId: String): Uri? {
-        enterCoroutineScopeWithIODispatcher {
-            storageRef.child("media").child("image").child("$boxId.jpg")
-                .putFile(imageUri).addOnSuccessListener {
-                    Log.d("CanvasActivity", "Create $boxId")
-                }.addOnFailureListener {
-                    Log.d("CanvasActivity", "Fail to update $boxId image")
-                }
-        }
-    }
-
-    override suspend fun updateImageData(imageData: ImageData) {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun deleteImageData(imageId: String) {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun createRecordData(recordData: RecordData) {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun readRecordData(recordId: String): RecordData {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun updateRecordData(recordData: RecordData) {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun deleteRecordData(recordId: String) {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun createVideoData(videoData: VideoData) {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun readVideoData(videoId: String): VideoData {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun updateVideoData(videoData: VideoData) {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun deleteVideoData(videoId: String) {
-        TODO("Not yet implemented")
-    }
-
-    private fun enterCoroutineScopeWithIODispatcher(
-        execute: () -> Unit
-    ) {
-        CoroutineScope(Dispatchers.IO).launch {
-            execute()
-        }
-    }
 }

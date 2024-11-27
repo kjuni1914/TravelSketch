@@ -13,7 +13,7 @@ data class BoxData(
     @get:PropertyName("height") @set:PropertyName("height") var height: Int? = 0,
     @get:PropertyName("latitude") @set:PropertyName("latitude") var latitude: Double? = null,
     @get:PropertyName("longitude") @set:PropertyName("longitude") var longitude: Double? = null,
-    @get:PropertyName("time") @set:PropertyName("time") var time: Int? = null,
+    @get:PropertyName("time") @set:PropertyName("time") var time: Long? = null,
     @get:PropertyName("width") @set:PropertyName("width") var width: Int? = 0,
     @get:PropertyName("type") @set:PropertyName("type") var type: String = "TEXT"
 ) {

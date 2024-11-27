@@ -12,16 +12,17 @@ interface DatabaseClient {
     val storageRef: StorageReference?
         get() = null
 
-    suspend fun createCanvasData(canvasId:String, canvasData: CanvasData)
+    suspend fun writeCanvasData(canvasId:String, canvasData: CanvasData): Boolean
     suspend fun readCanvasData(canvasId: String): CanvasData?
-    suspend fun updateCanvasData(canvasId:String, canvasData: CanvasData)
-    suspend fun deleteCanvasData(canvasId: String)
-    suspend fun createBoxData(canvasId: String, boxId: String, boxData: BoxData)
+    suspend fun readAllCanvasData(): List<CanvasData>?
+    suspend fun deleteCanvasData(canvasId: String): Boolean
+
+    suspend fun writeBoxData(canvasId: String, boxId: String, boxData: BoxData): Boolean
     suspend fun readBoxData(canvasId:String, boxId: String): BoxData?
-    suspend fun updateBoxData(canvasId: String, boxId: String, boxData: BoxData)
-    suspend fun deleteBoxData(canvasId: String, boxId: String)
-    suspend fun createUserData(userId: String, userData: UserData)
+    suspend fun readAllBoxData(canvasId:String): List<BoxData>?
+    suspend fun deleteBoxData(canvasId: String, boxId: String): Boolean
+
+    suspend fun writeUserData(userId: String, userData: UserData): Boolean
     suspend fun readUserData(userId: String): UserData?
-    suspend fun updateUserData(userId: String, userData: UserData)
-    suspend fun deleteUserData(userId: String)
+    suspend fun deleteUserData(userId: String): Boolean
 }
