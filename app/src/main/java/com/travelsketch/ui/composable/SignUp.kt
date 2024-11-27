@@ -13,19 +13,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
+import com.travelsketch.viewmodel.LoginViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun SignUp(
-    onRegisterClick: (email: String, password: String, phoneNumber: String) -> Unit
+    onRegisterClick: (email: String, password: String, phoneNumber: String) -> Unit,
+    loginViewModel: LoginViewModel
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -34,10 +39,12 @@ fun SignUp(
     var showEmailError by remember { mutableStateOf(false) }
     var showConfirmPasswordError by remember { mutableStateOf(false) }
 
+    val isPhoneVerified by loginViewModel.isPhoneVerified.collectAsState()
     val isPasswordMatching = password == confirmPassword && confirmPassword.isNotEmpty()
     val emailFocusRequester = remember { FocusRequester() }
     val passwordFocusRequester = remember { FocusRequester() }
     val confirmPasswordFocusRequester = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -45,7 +52,6 @@ fun SignUp(
             .padding(16.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        // Email Input
         OutlinedTextField(
             value = email,
             onValueChange = {
@@ -76,7 +82,6 @@ fun SignUp(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Password Input
         PasswordInput(
             password = password,
             onPasswordChange = { password = it },
@@ -93,15 +98,34 @@ fun SignUp(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Phone Number Input
         PhoneNumberInput(
             phoneNumber = phoneNumberState,
-            onPhoneNumberChange = { phoneNumberState = it }
+            onPhoneNumberChange = { phoneNumberState = it },
+            onSendVerificationCode = { phoneNumber ->
+                scope.launch {
+                    loginViewModel._isLoading.value = true
+                    try {
+                        val exists = loginViewModel.checkPhoneNumberExists(phoneNumber)
+                        if (exists) {
+                            loginViewModel.showSnackbar("This phone number is already registered")
+                        } else {
+                            loginViewModel.sendVerificationCode(phoneNumber)
+                        }
+                    } catch (e: Exception) {
+                        loginViewModel.showSnackbar("Error checking phone number: ${e.message}")
+                    } finally {
+                        loginViewModel._isLoading.value = false
+                    }
+                }
+            },
+            onVerifyCode = { code ->
+                loginViewModel.verifyCode(code)
+            },
+            loginViewModel = loginViewModel
         )
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Sign Up Button
         Button(
             onClick = {
                 val fullPhoneNumber = phoneNumberState.fullNumber()
@@ -119,11 +143,15 @@ fun SignUp(
                     }
                     fullPhoneNumber.isEmpty() -> {
                     }
+                    !isPhoneVerified -> {
+                        loginViewModel.showSnackbar("Please verify your phone number first")
+                    }
                     else -> {
                         onRegisterClick(email, password, fullPhoneNumber)
                     }
                 }
             },
+            enabled = isPhoneVerified,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Sign Up")

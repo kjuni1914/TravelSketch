@@ -8,22 +8,26 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.travelsketch.viewmodel.LoginViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun FindID(
-    onFindIDClick: () -> Unit
+    loginViewModel: LoginViewModel
 ) {
     var phoneNumberState by remember { mutableStateOf(PhoneNumberState()) }
-    var verificationNumber by remember { mutableStateOf("") }
+    val isPhoneVerified by loginViewModel.isPhoneVerified.collectAsState()
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -33,36 +37,37 @@ fun FindID(
     ) {
         PhoneNumberInput(
             phoneNumber = phoneNumberState,
-            onPhoneNumberChange = { phoneNumberState = it }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = {},
-            modifier = Modifier.fillMaxWidth(0.3f)
-        ) {
-            Text("Send Code")
-        }
-
-        OutlinedTextField(
-            value = verificationNumber,
-            onValueChange = { newValue ->
-                verificationNumber = newValue
+            onPhoneNumberChange = { phoneNumberState = it },
+            onSendVerificationCode = { phoneNumber ->
+                loginViewModel.sendVerificationCode(phoneNumber)
             },
-            label = { Text("Verification Code") },
-            placeholder = { Text("Enter your code") },
-            modifier = Modifier.fillMaxWidth()
+            onVerifyCode = { code ->
+                loginViewModel.verifyCode(code)
+            },
+            loginViewModel = loginViewModel
         )
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = {
-                val fullPhoneNumber = phoneNumberState.fullNumber()
-                if (fullPhoneNumber.isNotEmpty()) {
-                    onFindIDClick()
+                scope.launch {
+                    loginViewModel._isLoading.value = true
+                    try {
+                        val email = loginViewModel.findEmailByPhoneNumber(phoneNumberState.fullNumber())
+                        if (email != null) {
+                            loginViewModel.showSnackbar("Your email is: $email")
+                        } else {
+                            loginViewModel.showSnackbar("No account found with this phone number")
+                        }
+                    } catch (e: Exception) {
+                        loginViewModel.showSnackbar("Error finding email: ${e.message}")
+                    } finally {
+                        loginViewModel._isLoading.value = false
+                    }
                 }
             },
+            enabled = isPhoneVerified,
             modifier = Modifier.fillMaxWidth(0.3f)
         ) {
             Text("Find ID")

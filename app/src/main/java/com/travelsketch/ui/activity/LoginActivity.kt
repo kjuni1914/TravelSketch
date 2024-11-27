@@ -26,7 +26,6 @@ import com.google.android.gms.common.api.ApiException
 import com.travelsketch.R
 import com.travelsketch.ui.composable.FindID
 import com.travelsketch.ui.composable.Login
-import com.travelsketch.ui.composable.NewPasswordInput
 import com.travelsketch.ui.composable.ResetPassword
 import com.travelsketch.ui.composable.SignUp
 import com.travelsketch.ui.layout.UserLayout
@@ -56,7 +55,7 @@ class LoginActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        loginViewModel.setActivity(this)
         val googleSignInOption = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.google_client_id))
             .requestEmail()
@@ -121,19 +120,18 @@ class LoginActivity : ComponentActivity() {
                         "SignUp" -> SignUp(
                             onRegisterClick = { email, password, phoneNumber ->
                                 loginViewModel.registerUser(email, password, phoneNumber)
-                            }
+                            },
+                            loginViewModel = loginViewModel
                         )
                         "FindID" -> FindID(
-                            onFindIDClick = {
-                                /* TODO: FindID 연결 */
-                            }
+                            loginViewModel = loginViewModel
                         )
                         "ResetPassword" -> ResetPassword(
-                            onResetPasswordClick = {
-                                loginViewModel.setCurrentScreen("NewPasswordInput")
-                            }
+                            onResetPasswordClick = { email ->
+                                loginViewModel.sendPasswordResetEmail(email)
+                            },
+                            loginViewModel = loginViewModel
                         )
-                        "NewPasswordInput" -> NewPasswordInput()
                         "SelectViewType" -> SelectViewType()
                     }
                     if (isLoading) {
