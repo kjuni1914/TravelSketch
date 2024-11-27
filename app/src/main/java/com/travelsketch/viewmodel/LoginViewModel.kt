@@ -40,6 +40,7 @@ class LoginViewModel : ViewModel() {
     private val firebaseDatabase = FirebaseDatabase.getInstance()
 
     fun setCurrentScreen(screen: String) {
+        _isPhoneVerified.value = false
         _currentScreen.value = screen
     }
 
