@@ -1,4 +1,4 @@
-package com.travelsketch.data.repository
+package com.travelsketch.data.dao
 
 import android.util.Log
 import com.google.firebase.database.DataSnapshot
