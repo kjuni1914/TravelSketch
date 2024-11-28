@@ -117,9 +117,11 @@ object FirebaseClient: DatabaseClient {
 
             if (snapshot.exists()) {
                 snapshot.children.forEach { child ->
-                    val boxData = child.getValue(BoxData::class.java)
-                    if (boxData != null)
-                        canvasDataList.add(boxData)
+                    if (child.key?.startsWith("box_") == true) {
+                        val boxData = child.getValue(BoxData::class.java)
+                        if (boxData != null)
+                            canvasDataList.add(boxData)
+                    }
                 }
             }
 
@@ -130,7 +132,6 @@ object FirebaseClient: DatabaseClient {
             null
         }
     }
-
     override suspend fun deleteBoxData(canvasId: String, boxId: String): Boolean {
         return try {
             databaseRef.child("canvas").child(canvasId).child(boxId).removeValue().await()
