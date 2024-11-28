@@ -87,7 +87,7 @@ object FirebaseClient: DatabaseClient {
         boxData: BoxData
     ): Boolean {
         return try {
-            databaseRef.child("canvas").child(canvasId).setValue(boxData).await()
+            databaseRef.child("canvas").child(canvasId).child(boxId).setValue(boxData).await()
             true
         } catch (e: Exception) {
             Log.d("ITM", "DAO Error: $e")
