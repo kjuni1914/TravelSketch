@@ -20,7 +20,8 @@ class MapViewFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // 안전하게 arguments를 가져오도록 수정
-        initialPosition = arguments?.getParcelable(ARG_LAT_LNG) ?: LatLng(37.7749, -122.4194)
+        initialPosition = arguments?.getParcelable(ARG_LAT_LNG) ?: LatLng(37.5665, 126.9780)
+
 
         mapViewModel.updateInitialPosition(initialPosition)
         mapViewModel.fetchAllCanvasData() // Firebase에서 모든 캔버스 데이터 가져오기
