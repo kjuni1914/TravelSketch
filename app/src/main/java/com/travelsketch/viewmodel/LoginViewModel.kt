@@ -42,6 +42,11 @@ class LoginViewModel : ViewModel() {
 
     fun setCurrentScreen(screen: String) {
         _isPhoneVerified.value = false
+        _isTimerRunning.value = false
+        stopVerificationTimer()
+
+        _isLoading.value = false
+        verificationId = null
         _currentScreen.value = screen
     }
 
