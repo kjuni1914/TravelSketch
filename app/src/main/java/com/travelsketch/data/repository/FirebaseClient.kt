@@ -153,13 +153,13 @@ object FirebaseClient: DatabaseClient {
         canvasIds: String,
         friendIds: String,
         phoneNumber: String,
-        viewType: Boolean
+        email: String
     ) {
         val user = User(
             phoneNumber = phoneNumber,
             canvasIds = canvasIds,
             friendIds = friendIds,
-            viewType = viewType
+            email = email
         )
         database.child("users").child(userId).setValue(user).await()
     }
@@ -185,13 +185,13 @@ object FirebaseClient: DatabaseClient {
         canvasIds: String,
         friendIds: String,
         phoneNumber: String,
-        viewType: Boolean
+        email: String
     ) {
         val updatedUser = User(
             phoneNumber = phoneNumber,
             canvasIds = canvasIds,
             friendIds = friendIds,
-            viewType = viewType
+            email = email
         )
         database.child("users").child(userId).setValue(updatedUser).await()
     }

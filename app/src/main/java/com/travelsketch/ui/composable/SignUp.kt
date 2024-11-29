@@ -103,15 +103,16 @@ fun SignUp(
             onPhoneNumberChange = { phoneNumberState = it },
             onSendVerificationCode = { phoneNumber ->
                 scope.launch {
-                    loginViewModel._isLoading.value = true
                     try {
+                        loginViewModel._isLoading.value = true
                         val exists = loginViewModel.checkPhoneNumberExists(phoneNumber)
                         if (exists) {
                             loginViewModel.showSnackbar("This phone number is already registered")
-                        } else {
-                            loginViewModel.sendVerificationCode(phoneNumber)
+                            return@launch
                         }
+                        loginViewModel.sendVerificationCode(phoneNumber)
                     } catch (e: Exception) {
+                        loginViewModel.stopVerificationTimer()
                         loginViewModel.showSnackbar("Error checking phone number: ${e.message}")
                     } finally {
                         loginViewModel._isLoading.value = false

@@ -64,7 +64,7 @@ interface DatabaseClient {
         canvasIds: String,
         friendIds: String,
         phoneNumber: String,
-        viewType: Boolean
+        email: String
     )
     suspend fun readUser(userId: String): User?
     suspend fun updateUser(
@@ -72,7 +72,7 @@ interface DatabaseClient {
         canvasIds: String,
         friendIds: String,
         phoneNumber: String,
-        viewType: Boolean
+        email: String
     )
     suspend fun deleteUser(userId: String)
 }

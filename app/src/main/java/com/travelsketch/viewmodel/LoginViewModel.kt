@@ -11,6 +11,7 @@ import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.database.FirebaseDatabase
+import com.travelsketch.data.model.User
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -72,14 +73,18 @@ class LoginViewModel : ViewModel() {
                 val authResult = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
                 val userId = authResult.user?.uid ?: throw Exception("Failed to retrieve user ID.")
 
-                val user = mapOf(
-                    "email" to email,
-                    "phone_number" to phoneNumber,
-                    "view_type" to false,
-                    "canvas_ids" to "",
-                    "friend_ids" to ""
+                val newUser = User(
+                    email = email,
+                    phoneNumber = phoneNumber,
+                    canvasIds = "",
+                    friendIds = ""
                 )
-                firebaseDatabase.reference.child("users").child(userId).setValue(user).await()
+
+                firebaseDatabase.reference
+                    .child("users")
+                    .child(userId)
+                    .setValue(newUser)
+                    .await()
 
                 _eventFlow.emit("Registration successful!")
             } catch (e: Exception) {
@@ -99,13 +104,14 @@ class LoginViewModel : ViewModel() {
                         val userRef = firebaseDatabase.getReference("users").child(userId)
                         userRef.get().addOnSuccessListener { dataSnapshot ->
                             if (!dataSnapshot.exists()) {
-                                val userData = mapOf(
-                                    "phone_number" to "",
-                                    "view_type" to false,
-                                    "canvas_ids" to "",
-                                    "friend_ids" to ""
+                                val newUser = User(
+                                    email = firebaseAuth.currentUser?.email ?: "",
+                                    phoneNumber = "",
+                                    canvasIds = "",
+                                    friendIds = ""
                                 )
-                                userRef.setValue(userData)
+
+                                userRef.setValue(newUser)
                                     .addOnCompleteListener { dbTask ->
                                         _isLoading.value = false
                                         if (dbTask.isSuccessful) {
@@ -147,6 +153,17 @@ class LoginViewModel : ViewModel() {
         firebaseAuth.currentUser?.reload()
     }
 
+    private val _isTimerRunning = MutableStateFlow(false)
+    val isTimerRunning = _isTimerRunning.asStateFlow()
+
+    fun startVerificationTimer() {
+        _isTimerRunning.value = true
+    }
+
+    fun stopVerificationTimer() {
+        _isTimerRunning.value = false
+    }
+
     fun sendVerificationCode(phoneNumber: String) {
         _isLoading.value = true
 
@@ -160,7 +177,7 @@ class LoginViewModel : ViewModel() {
 
         val options = PhoneAuthOptions.newBuilder(firebaseAuth)
             .setPhoneNumber(phoneNumber)
-            .setTimeout(60L, TimeUnit.SECONDS)
+            .setTimeout(120L, TimeUnit.SECONDS)
             .setActivity(activity!!)
             .setCallbacks(object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
                 override fun onVerificationCompleted(credential: PhoneAuthCredential) {
@@ -173,6 +190,7 @@ class LoginViewModel : ViewModel() {
 
                 override fun onVerificationFailed(e: FirebaseException) {
                     _isLoading.value = false
+                    stopVerificationTimer()
                     viewModelScope.launch {
                         _eventFlow.emit("Verification failed: ${e.message}")
                         _isPhoneVerified.value = false
@@ -185,6 +203,7 @@ class LoginViewModel : ViewModel() {
                 ) {
                     this@LoginViewModel.verificationId = verificationId
                     _isLoading.value = false
+                    startVerificationTimer()
                     viewModelScope.launch {
                         _eventFlow.emit("Verification code sent")
                     }
@@ -240,7 +259,8 @@ class LoginViewModel : ViewModel() {
 
             if (snapshot.exists()) {
                 for (child in snapshot.children) {
-                    return child.child("email").value as String?
+                    val user = child.getValue(User::class.java)
+                    return user?.email
                 }
             }
             null
@@ -267,9 +287,9 @@ class LoginViewModel : ViewModel() {
 
             if (snapshot.exists()) {
                 for (child in snapshot.children) {
-                    val userEmail = child.child("email").value as? String
-                    if (userEmail == email) {
-                        return child.child("phone_number").value as? String
+                    val user = child.getValue(User::class.java)
+                    if (user?.email == email) {
+                        return user.phoneNumber
                     }
                 }
             }

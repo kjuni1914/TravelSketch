@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.travelsketch.viewmodel.LoginViewModel
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,20 +29,28 @@ fun PhoneNumberInput(
 ) {
     val focusRequester2: FocusRequester = remember { FocusRequester() }
     val focusRequester3: FocusRequester = remember { FocusRequester() }
-    val focusRequseter4: FocusRequester = remember { FocusRequester() }
+    val focusRequester4: FocusRequester = remember { FocusRequester() }
     var countryExpanded by remember { mutableStateOf(false) }
     var verificationCode by remember { mutableStateOf("") }
-    val isLoading by loginViewModel.isLoading.collectAsState()
-    var previousLoadingState by remember { mutableStateOf(false) }
+    val isTimerRunning by loginViewModel.isTimerRunning.collectAsState()
+    var remainingSeconds by remember { mutableStateOf(120) }
+    val isPhoneVerified by loginViewModel.isPhoneVerified.collectAsState()
 
-    LaunchedEffect(isLoading) {
-        if (previousLoadingState && !isLoading) {
+    LaunchedEffect(isTimerRunning) {
+        if (isTimerRunning) {
+            remainingSeconds = 120
             try {
-                focusRequseter4.requestFocus()
-            } catch (e: Exception) {
+                focusRequester4.requestFocus()
+            } catch (e: Exception) {}
+        }
+
+        while (isTimerRunning && remainingSeconds > 0) {
+            delay(1000)
+            remainingSeconds--
+            if (remainingSeconds == 0) {
+                loginViewModel.stopVerificationTimer()
             }
         }
-        previousLoadingState = isLoading
     }
 
     val countryOptions = listOf(
@@ -135,34 +144,54 @@ fun PhoneNumberInput(
             )
         }
 
+
         Button(
             onClick = { onSendVerificationCode(phoneNumber.fullNumber()) },
             modifier = Modifier.fillMaxWidth(),
-            enabled = phoneNumber.isValid()
+            enabled = phoneNumber.isValid() && !isPhoneVerified
         ) {
-            Text("Send Verification Code")
+            Text(if (isTimerRunning) "Resend Code" else "Send Verification Code")
         }
 
-        OutlinedTextField(
-            value = verificationCode,
-            onValueChange = { if (it.length <= 6) verificationCode = it },
-            label = { Text("Verification Code") },
-            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(focusRequseter4),
-            textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = verificationCode,
+                onValueChange = { if (it.length <= 6) verificationCode = it },
+                label = { Text("Verification Code") },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focusRequester4),
+                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
+                enabled = isTimerRunning && remainingSeconds > 0 && !isPhoneVerified
+            )
+
+            if (isTimerRunning && !isPhoneVerified) {
+                Text(
+                    text = "${remainingSeconds / 60}:${String.format("%02d", remainingSeconds % 60)}",
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
 
         Button(
             onClick = { onVerifyCode(verificationCode) },
             modifier = Modifier.fillMaxWidth(),
-            enabled = verificationCode.length == 6
+            enabled = verificationCode.length == 6 && isTimerRunning && remainingSeconds > 0 && !isPhoneVerified
         ) {
-            Text("Verify Code")
+            if (isPhoneVerified) {
+                Text("Verify Complete!")
+            } else {
+                Text("Verify Code")
+            }
         }
     }
 }
+
 data class PhoneNumberState(
     val countryCode: String = "+82",
     val part1: String = "",
