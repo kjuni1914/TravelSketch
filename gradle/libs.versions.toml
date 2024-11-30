@@ -11,6 +11,7 @@ composeBom = "2024.04.01"
 google-maps = "18.0.2"
 maps-compose = "2.13.0"
 google-maps-compose = "2.13.0"
+playServicesLocation = "21.0.1" # 원하는 버전으로 설정
 
 android-maps-utils = "3.4.0"
 android-maps-compose = "2.13.0"
@@ -37,6 +38,7 @@ maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = 
 google-maps-utils = { module = "com.google.maps.android:android-maps-utils", version.ref = "android-maps-utils" }
 google-maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "android-maps-compose" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
 
 [plugins]
