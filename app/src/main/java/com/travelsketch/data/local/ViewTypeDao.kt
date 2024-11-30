@@ -12,7 +12,4 @@ interface ViewTypeDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun setViewType(viewTypeEntity: ViewTypeEntity)
-
-    @Query("DELETE FROM view_type WHERE userId = :userId")
-    suspend fun deleteViewType(userId: String)
 }

@@ -1,5 +1,7 @@
 package com.travelsketch.viewmodel
 
+import android.content.Intent
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,6 +17,8 @@ import com.travelsketch.data.local.AppDatabase
 import com.travelsketch.data.local.ViewTypeEntity
 import com.travelsketch.data.model.User
 import com.travelsketch.data.model.ViewType
+import com.travelsketch.ui.activity.ListViewActivity
+import com.travelsketch.ui.activity.MapViewActivity
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -68,7 +72,8 @@ class LoginViewModel : ViewModel() {
                 _isLoading.value = false
                 if (task.isSuccessful) {
                     showSnackbar("Login successful!")
-                    setCurrentScreen("SelectViewType")
+                    // TODO: 적절한 액티비티 쏴주기
+//                    checkSavedViewType() // 설정된 뷰타입 참조해서 적절한 화면 쏴주기
                 } else {
                     showSnackbar("Login failed: ${task.exception?.message}")
                 }
@@ -104,48 +109,52 @@ class LoginViewModel : ViewModel() {
     fun firebaseAuthWithGoogle(idToken: String) {
         _isLoading.value = true
         val credential = GoogleAuthProvider.getCredential(idToken, null)
+
         firebaseAuth.signInWithCredential(credential)
             .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val userId = firebaseAuth.currentUser?.uid
-                    if (userId != null) {
-                        val userRef = firebaseDatabase.getReference("users").child(userId)
-                        userRef.get().addOnSuccessListener { dataSnapshot ->
-                            if (!dataSnapshot.exists()) {
-                                val newUser = User(
-                                    email = firebaseAuth.currentUser?.email ?: "",
-                                    phoneNumber = "",
-                                    canvasIds = "",
-                                    friendIds = ""
-                                )
-
-                                userRef.setValue(newUser)
-                                    .addOnCompleteListener { dbTask ->
-                                        _isLoading.value = false
-                                        if (dbTask.isSuccessful) {
-                                            setCurrentScreen("Next")
-                                            showSnackbar("Google sign-in successful!")
-                                        } else {
-                                            showSnackbar("Database update failed: ${dbTask.exception?.message}")
-                                        }
-                                    }
-                            } else {
-                                _isLoading.value = false
-                                setCurrentScreen("Next")
-                                showSnackbar("Google sign-in successful!")
-                            }
-                        }.addOnFailureListener { dbTask ->
-                            _isLoading.value = false
-                            showSnackbar("Database read failed: ${dbTask.message}")
-                        }
-                    } else {
-                        _isLoading.value = false
-                        showSnackbar("User ID is null.")
-                    }
-                } else {
+                if (!task.isSuccessful) {
                     _isLoading.value = false
                     showSnackbar("Google sign-in failed: ${task.exception?.message}")
+                    return@addOnCompleteListener
                 }
+
+                val userId = firebaseAuth.currentUser?.uid
+                if (userId == null) {
+                    _isLoading.value = false
+                    showSnackbar("User ID is null.")
+                    return@addOnCompleteListener
+                }
+
+                val userRef = firebaseDatabase.getReference("users").child(userId)
+                userRef.get()
+                    .addOnSuccessListener { dataSnapshot ->
+                        if (!dataSnapshot.exists()) {
+                            val newUser = User(
+                                email = firebaseAuth.currentUser?.email ?: "",
+                                phoneNumber = "",
+                                canvasIds = "",
+                                friendIds = ""
+                            )
+                            userRef.setValue(newUser)
+                                .addOnCompleteListener { dbTask ->
+                                    _isLoading.value = false
+                                    if (dbTask.isSuccessful) {
+                                        showSnackbar("Google sign-in successful!")
+                                        checkSavedViewType()
+                                    } else {
+                                        showSnackbar("Database update failed: ${dbTask.exception?.message}")
+                                    }
+                                }
+                        } else {
+                            _isLoading.value = false
+                            showSnackbar("Google sign-in successful!")
+                            checkSavedViewType()
+                        }
+                    }
+                    .addOnFailureListener { dbTask ->
+                        _isLoading.value = false
+                        showSnackbar("Database read failed: ${dbTask.message}")
+                    }
             }
     }
 
@@ -314,16 +323,32 @@ class LoginViewModel : ViewModel() {
     }
 
     fun saveViewType(viewType: ViewType) {
+        Log.d("Room", "saveViewType called in ViewModel")
         viewModelScope.launch {
             try {
                 val userId = currentUser()?.uid ?: throw Exception("User not found")
+                Log.d("Room", "Before database call")
                 database?.viewTypeDao()?.setViewType(ViewTypeEntity(userId, viewType))
-                when (viewType) {
-                    ViewType.MAP -> setCurrentScreen("MapView")
-                    ViewType.LIST -> setCurrentScreen("ListView")
-                    ViewType.NOT_SET -> setCurrentScreen("SelectViewType")
+                Log.d("Room", "After database call")
+
+                activity?.let { currentActivity ->
+                    when (viewType) {
+                        ViewType.MAP -> {
+                            val intent = Intent(currentActivity, MapViewActivity::class.java)
+                            currentActivity.startActivity(intent)
+                            currentActivity.finish()
+                        }
+                        ViewType.LIST -> {
+                            val intent = Intent(currentActivity, ListViewActivity::class.java)
+                            currentActivity.startActivity(intent)
+                            currentActivity.finish()
+                        }
+                        ViewType.NOT_SET -> setCurrentScreen("SelectViewType")
+                    }
                 }
+                Log.d("Room", "viewType set $viewType")
             } catch (e: Exception) {
+                Log.d("Room", "Failed to save view type")
                 showSnackbar("Failed to save view type: ${e.message}")
             }
         }
@@ -338,10 +363,20 @@ class LoginViewModel : ViewModel() {
                     return@launch
                 }
                 val savedViewType = database?.viewTypeDao()?.getViewType(userId)
-                when (savedViewType?.viewType) {
-                    ViewType.MAP -> setCurrentScreen("MapView")
-                    ViewType.LIST -> setCurrentScreen("ListView")
-                    ViewType.NOT_SET, null -> setCurrentScreen("SelectViewType")
+                activity?.let { currentActivity ->
+                    when (savedViewType?.viewType) {
+                        ViewType.MAP -> {
+                            val intent = Intent(currentActivity, MapViewActivity::class.java)
+                            currentActivity.startActivity(intent)
+                            currentActivity.finish()
+                        }
+                        ViewType.LIST -> {
+                            val intent = Intent(currentActivity, ListViewActivity::class.java)
+                            currentActivity.startActivity(intent)
+                            currentActivity.finish()
+                        }
+                        ViewType.NOT_SET, null -> setCurrentScreen("SelectViewType")
+                    }
                 }
             } catch (e: Exception) {
                 showSnackbar("Failed to load view type: ${e.message}")

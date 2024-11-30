@@ -2,6 +2,7 @@ package com.travelsketch.ui.activity
 
 import SelectViewType
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -22,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -35,6 +38,7 @@ import com.travelsketch.ui.composable.ResetPassword
 import com.travelsketch.ui.composable.SignUp
 import com.travelsketch.ui.layout.UserLayout
 import com.travelsketch.viewmodel.LoginViewModel
+import java.util.concurrent.Executors
 
 class LoginActivity : ComponentActivity() {
     private val loginViewModel: LoginViewModel by viewModels()
@@ -72,9 +76,28 @@ class LoginActivity : ComponentActivity() {
             applicationContext,
             AppDatabase::class.java,
             "app_database"
-        ).build()
+        )
+//            .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
+//            .addCallback(object : RoomDatabase.Callback() {
+//                override fun onCreate(db: SupportSQLiteDatabase) {
+//                    super.onCreate(db)
+//                    Log.d("Room", "Database created")
+//                }
+//
+//                override fun onOpen(db: SupportSQLiteDatabase) {
+//                    super.onOpen(db)
+//                    Log.d("Room", "Database opened")
+//                }
+//            })
+//            .setQueryCallback({ sqlQuery, bindArgs ->
+//                Log.d("Room", "SQL Query: $sqlQuery")
+//                Log.d("Room", "Args: $bindArgs")
+//            }, Executors.newSingleThreadExecutor())
+            .build()
+
 
         loginViewModel.setDatabase(database)
+        FirebaseClient.initViewTypeDao(database.viewTypeDao())
 
         if (loginViewModel.currentUser() != null) {
             loginViewModel.checkSavedViewType()
@@ -111,8 +134,6 @@ class LoginActivity : ComponentActivity() {
                     "ResetPassword" -> "ResetPassword"
                     "NewPasswordInput" -> "NewPasswordInput"
                     "SelectViewType" -> "SelectViewType"
-                    "MapView" -> "Map View"
-                    "ListView" -> "List View"
                     else -> "Login"
                 },
                 snackbarHostState = snackbarHostState
@@ -147,8 +168,6 @@ class LoginActivity : ComponentActivity() {
                             loginViewModel = loginViewModel
                         )
                         "SelectViewType" -> SelectViewType(loginViewModel)
-                        "MapView" -> MapViewScreen()
-                        "ListView" -> ListViewScreen()
                     }
                     if (isLoading) {
                         CircularProgressIndicator(
@@ -159,27 +178,6 @@ class LoginActivity : ComponentActivity() {
                     }
                 }
             }
-            val database = Room.databaseBuilder(
-                applicationContext,
-                AppDatabase::class.java,
-                "app_database"
-            ).build()
-
-            FirebaseClient.initViewTypeDao(database.viewTypeDao())
-        }
-    }
-
-    @Composable
-    fun MapViewScreen() {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Text("Map View Screen")
-        }
-    }
-
-    @Composable
-    fun ListViewScreen() {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Text("List View Screen")
         }
     }
 }

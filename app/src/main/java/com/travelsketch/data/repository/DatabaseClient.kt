@@ -80,5 +80,4 @@ interface DatabaseClient {
 
     suspend fun getViewType(userId: String): ViewType
     suspend fun setViewType(userId: String, viewType: ViewType)
-    suspend fun deleteViewType(userId: String)
 }
