@@ -4,6 +4,7 @@ import com.travelsketch.data.model.Box
 import com.travelsketch.data.model.BoxType
 import com.travelsketch.data.model.Canvas
 import com.travelsketch.data.model.User
+import com.travelsketch.data.model.ViewType
 
 interface DatabaseClient {
     val database: Any?
@@ -75,4 +76,9 @@ interface DatabaseClient {
         email: String
     )
     suspend fun deleteUser(userId: String)
+
+
+    suspend fun getViewType(userId: String): ViewType
+    suspend fun setViewType(userId: String, viewType: ViewType)
+    suspend fun deleteViewType(userId: String)
 }

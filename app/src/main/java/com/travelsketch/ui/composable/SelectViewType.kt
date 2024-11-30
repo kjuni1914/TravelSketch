@@ -16,14 +16,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewModelScope
+import com.travelsketch.data.model.ViewType
+import com.travelsketch.viewmodel.LoginViewModel
+import kotlinx.coroutines.launch
 
 @Composable
-fun SelectViewType() {
+fun SelectViewType(
+    loginViewModel: LoginViewModel
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-//        verticalArrangement = Arrangement.Center,
     ) {
         Text(
             text = "Select your canvas view type",
@@ -33,7 +38,14 @@ fun SelectViewType() {
         )
 
         IconButton(
-            onClick = {},
+            onClick = {
+                val userId = loginViewModel.currentUser()?.uid
+                if (userId != null) {
+                    loginViewModel.viewModelScope.launch {
+                        loginViewModel.saveViewType(ViewType.MAP)
+                    }
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(100.dp)
@@ -54,7 +66,14 @@ fun SelectViewType() {
         }
 
         IconButton(
-            onClick = {},
+            onClick = {
+                val userId = loginViewModel.currentUser()?.uid
+                if (userId != null) {
+                    loginViewModel.viewModelScope.launch {
+                        loginViewModel.saveViewType(ViewType.LIST)
+                    }
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(100.dp)

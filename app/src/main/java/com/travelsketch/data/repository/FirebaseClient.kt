@@ -2,10 +2,13 @@ package com.travelsketch.data.repository
 
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.travelsketch.data.local.ViewTypeDao
+import com.travelsketch.data.local.ViewTypeEntity
 import com.travelsketch.data.model.Box
 import com.travelsketch.data.model.BoxType
 import com.travelsketch.data.model.Canvas
 import com.travelsketch.data.model.User
+import com.travelsketch.data.model.ViewType
 import kotlinx.coroutines.tasks.await
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -198,5 +201,24 @@ object FirebaseClient: DatabaseClient {
 
     override suspend fun deleteUser(userId: String) {
         database.child("users").child(userId).removeValue().await()
+    }
+
+
+    private lateinit var viewTypeDao: ViewTypeDao
+
+    fun initViewTypeDao(viewTypeDao: ViewTypeDao) {
+        this.viewTypeDao = viewTypeDao
+    }
+
+    override suspend fun getViewType(userId: String): ViewType {
+        return viewTypeDao.getViewType(userId)?.viewType ?: ViewType.NOT_SET
+    }
+
+    override suspend fun setViewType(userId: String, viewType: ViewType) {
+        viewTypeDao.setViewType(ViewTypeEntity(userId, viewType))
+    }
+
+    override suspend fun deleteViewType(userId: String) {
+        viewTypeDao.deleteViewType(userId)
     }
 }

@@ -11,7 +11,10 @@ import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.database.FirebaseDatabase
+import com.travelsketch.data.local.AppDatabase
+import com.travelsketch.data.local.ViewTypeEntity
 import com.travelsketch.data.model.User
+import com.travelsketch.data.model.ViewType
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -301,6 +304,48 @@ class LoginViewModel : ViewModel() {
             null
         } catch (e: Exception) {
             throw e
+        }
+    }
+
+    private var database: AppDatabase? = null
+
+    fun setDatabase(db: AppDatabase) {
+        database = db
+    }
+
+    fun saveViewType(viewType: ViewType) {
+        viewModelScope.launch {
+            try {
+                val userId = currentUser()?.uid ?: throw Exception("User not found")
+                database?.viewTypeDao()?.setViewType(ViewTypeEntity(userId, viewType))
+                when (viewType) {
+                    ViewType.MAP -> setCurrentScreen("MapView")
+                    ViewType.LIST -> setCurrentScreen("ListView")
+                    ViewType.NOT_SET -> setCurrentScreen("SelectViewType")
+                }
+            } catch (e: Exception) {
+                showSnackbar("Failed to save view type: ${e.message}")
+            }
+        }
+    }
+
+    fun checkSavedViewType() {
+        viewModelScope.launch {
+            try {
+                val userId = currentUser()?.uid
+                if (userId == null) {
+                    setCurrentScreen("SelectViewType")
+                    return@launch
+                }
+                val savedViewType = database?.viewTypeDao()?.getViewType(userId)
+                when (savedViewType?.viewType) {
+                    ViewType.MAP -> setCurrentScreen("MapView")
+                    ViewType.LIST -> setCurrentScreen("ListView")
+                    ViewType.NOT_SET, null -> setCurrentScreen("SelectViewType")
+                }
+            } catch (e: Exception) {
+                showSnackbar("Failed to load view type: ${e.message}")
+            }
         }
     }
 }
