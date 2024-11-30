@@ -3,7 +3,7 @@ package com.travelsketch.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
-import com.travelsketch.data.repository.FirebaseMapRepository
+import com.travelsketch.data.dao.FirebaseMapRepository
 import com.travelsketch.data.model.MapData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,8 +14,6 @@ class ListViewModel : ViewModel() {
 
     private val _canvasData = MutableStateFlow<MapData?>(null)
     val canvasData: StateFlow<MapData?> = _canvasData
-
-
 
     // 모두 불러오기
     private val _canvasList = MutableStateFlow<List<MapData>>(emptyList())
@@ -36,11 +34,11 @@ class ListViewModel : ViewModel() {
 
 
 
-    fun updateInitialPosition(latLng: LatLng) {
-        _canvasData.value = MapData(
-            avg_gps_latitude = latLng.latitude,
-            avg_gps_longitude = latLng.longitude
-        )
-    }
+//    fun updateInitialPosition(latLng: LatLng) {
+//        _canvasData.value = MapData(
+//            avg_gps_latitude = latLng.latitude,
+//            avg_gps_longitude = latLng.longitude,
+//        )
+//    }
 
 }

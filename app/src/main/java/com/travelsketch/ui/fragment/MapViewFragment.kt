@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import com.google.android.gms.maps.model.LatLng
 import com.travelsketch.ui.activity.MapViewActivity
@@ -36,7 +37,8 @@ class MapViewFragment : Fragment() {
             setContent {
                 MapViewScreen(
                     viewModel = mapViewModel,
-                    onNavigateToListView = { navigateToListViewActivity() }
+                    onNavigateToListView = { navigateToListViewActivity() },
+                    onNavigateToMapSetup = { navigateToMapSetupFragment() } // Fragment 전환 콜백
                 )
             }
         }
@@ -44,6 +46,17 @@ class MapViewFragment : Fragment() {
 
     private fun navigateToListViewActivity() {
         (activity as? MapViewActivity)?.navigateToListViewActivity()    }
+
+    private fun navigateToMapSetupFragment() {
+        parentFragmentManager.commit {
+            replace(
+                android.R.id.content, // Fragment를 대체할 컨테이너 ID
+                MapSetupFragment()
+            )
+            addToBackStack(null) // 뒤로 가기 버튼 지원
+        }
+    }
+
 
     companion object {
         private const val ARG_LAT_LNG = "arg_lat_lng"

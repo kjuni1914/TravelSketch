@@ -12,7 +12,7 @@ class MapViewActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // Intent를 통해 로드할 Fragment 결정
-        val initialFragment = intent.getStringExtra("FRAGMENT") ?: "MAP_SETUP"
+        val initialFragment = intent.getStringExtra("FRAGMENT") ?: "MAP_VIEW"
 
         setContent {
             HostMapAndMapViewFragments(

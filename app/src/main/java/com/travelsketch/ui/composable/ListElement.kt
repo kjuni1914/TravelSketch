@@ -1,6 +1,7 @@
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -14,13 +15,19 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.constraintlayout.motion.widget.MotionScene.Transition.TransitionOnClick
 import com.travelsketch.R
 
 @Composable
 fun ListElement(
     title: String,
+    canvasId: String, // canvasId 추가
+//    onClick: (String) -> Unit // canvasId를 전달하는 콜백
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+//        .clickable { onClick(canvasId) } // 클릭 시 canvasId 전달
+    ) {
         // 카드 배경
         Card(
             shape = RoundedCornerShape(4.dp),

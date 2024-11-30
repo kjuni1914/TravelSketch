@@ -2,6 +2,7 @@ import android.net.http.HttpException
 import android.os.Build
 import android.widget.Toast
 import androidx.annotation.RequiresExtension
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -54,7 +55,10 @@ fun MapSetupScreen(
         canvasId = mapViewModel.getNextCanvasId() // ViewModel에서 canvas_id 가져오기
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .background(Color.White) // 배경 흰색 설정
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -67,8 +71,6 @@ fun MapSetupScreen(
                     .padding(16.dp),
                 textAlign = TextAlign.Center
             )
-
-            // 검색 텍스트 필드
 
             // 검색 필드와 버튼을 같은 줄에 배치
             Row(
@@ -166,17 +168,17 @@ fun MapSetupScreen(
                 if (mapCanvasTitle.isEmpty()) {
                     Toast.makeText(context, "제목을 입력해주세요", Toast.LENGTH_SHORT).show()
                 } else {
-                    val canvas_id = canvasId // 임의 값
+                    val canvas_id = canvasId
                     val avg_gps_latitude = selectedPosition.latitude
                     val avg_gps_longitude = selectedPosition.longitude
                     val map_canvas_title = mapCanvasTitle
 
-//                mapViewModel.createMapCanvasData(
-//                    canvasId = canvas_id,
-//                    avgGpsLatitude = avg_gps_latitude,
-//                    avgGpsLongitude = avg_gps_longitude,
-//                    title = map_canvas_title
-//                )
+                mapViewModel.createMapCanvasData(
+                    canvasId = canvas_id,
+                    avgGpsLatitude = avg_gps_latitude,
+                    avgGpsLongitude = avg_gps_longitude,
+                    title = map_canvas_title
+                )
                     onLocationConfirmed(selectedPosition)
                 }
                       },

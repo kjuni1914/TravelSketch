@@ -6,9 +6,13 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.platform.LocalContext
+import coil.ImageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
@@ -20,7 +24,8 @@ import com.travelsketch.R
 @Composable
 fun CanvasMarker(
     position: LatLng,
-    imageResId: Int,
+    imageResId: Int? = null,
+    imageUrl: String? = null,
     cameraPositionState: CameraPositionState,
     onClick: () -> Unit
 ) {
@@ -32,19 +37,48 @@ fun CanvasMarker(
     // 줌 레벨에 따라 크기 계산
     val (width, height) = calculateMarkerSize(zoom)
 
-    // 배경 포함 커스텀 BitmapDescriptor 생성
-    val customIcon = getScaledBitmapDescriptorWithBackground(context, imageResId, width, height)
-
-    // Google Map의 Marker 사용
-    Marker(
-        state = MarkerState(position = position),
-        icon = customIcon,
-        onClick = {
-            onClick()
-            true
+    // 커스텀 BitmapDescriptor 생성
+    val customIcon by produceState<BitmapDescriptor?>(initialValue = null, imageUrl, imageResId) {
+        value = when {
+            imageUrl != null -> {
+                try {
+                    // Firebase Storage 이미지 불러오기
+                    getScaledBitmapDescriptorWithBackgroundFromUrl(context, imageUrl, width, height)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    // Firebase에서 실패하면 기본 이미지 사용
+                    getScaledBitmapDescriptorWithBackground(context, R.drawable.paris, width, height).also {
+                        println("Fallback to local image R.drawable.paris")
+                    }
+                }
+            }
+            imageResId != null -> {
+                // 로컬 이미지 사용
+                getScaledBitmapDescriptorWithBackground(context, imageResId, width, height).also {
+                    println("Using local image resource: R.drawable.paris")
+                }
+            }
+            else -> {
+                // 기본값으로 null 반환
+                println("No image resource or URL provided")
+                null
+            }
         }
-    )
+    }
+
+    if (customIcon != null) {
+        // Google Map의 Marker 사용
+        Marker(
+            state = MarkerState(position = position),
+            icon = customIcon,
+            onClick = {
+                onClick()
+                true
+            }
+        )
+    }
 }
+
 
 fun calculateMarkerSize(zoom: Float): Pair<Int, Int> {
     val minSize = 50 // 최소 크기
@@ -60,6 +94,53 @@ fun getScaledBitmapDescriptorWithBackground(context: Context, drawableRes: Int, 
     return BitmapDescriptorFactory.fromBitmap(customBitmap)
 }
 
+
+
+suspend fun getScaledBitmapDescriptorWithBackgroundFromUrl(
+    context: Context,
+    imageUrl: String,
+    width: Int,
+    height: Int
+): BitmapDescriptor? {
+    return try {
+        val loader = ImageLoader(context)
+        val request = ImageRequest.Builder(context)
+            .data(imageUrl)
+            .allowHardware(false) // Bitmap 생성 시 Hardware Bitmap 사용 비활성화
+            .build()
+
+        val result = (loader.execute(request) as SuccessResult).drawable
+        val bitmap = Bitmap.createScaledBitmap(
+            (result as android.graphics.drawable.BitmapDrawable).bitmap,
+            width,
+            height,
+            false
+        )
+
+        // 배경 포함 커스텀 Bitmap 생성
+        val backgroundWidth = width + 20
+        val backgroundHeight = height + 20
+
+        val backgroundBitmap =
+            Bitmap.createBitmap(backgroundWidth, backgroundHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(backgroundBitmap)
+
+        val paint = Paint()
+        paint.color = Color.DKGRAY
+        paint.style = Paint.Style.FILL
+        canvas.drawRect(0f, 0f, backgroundWidth.toFloat(), backgroundHeight.toFloat(), paint)
+
+        val left = (backgroundWidth - width) / 2
+        val top = (backgroundHeight - height) / 2
+        canvas.drawBitmap(bitmap, left.toFloat(), top.toFloat(), null)
+
+        BitmapDescriptorFactory.fromBitmap(backgroundBitmap)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        println("Failed to load image from URL, falling back to default")
+        getScaledBitmapDescriptorWithBackground(context, R.drawable.paris, width, height)
+    }
+}
 
 fun createCustomMarkerBitmap(context: Context, drawableRes: Int, width: Int, height: Int): Bitmap {
     // 원본 이미지를 로드

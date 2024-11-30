@@ -3,7 +3,7 @@ package com.travelsketch.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
-import com.travelsketch.data.repository.FirebaseMapRepository
+import com.travelsketch.data.dao.FirebaseMapRepository
 import com.travelsketch.data.model.MapData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +19,7 @@ class MapViewModel : ViewModel() {
     private val _canvasDataList = MutableStateFlow<List<MapData>>(emptyList())
     val canvasDataList: StateFlow<List<MapData>> = _canvasDataList
 
-    private val _initialPosition = MutableStateFlow(LatLng(37.7749, -122.4194)) // Default 위치
+    private val _initialPosition = MutableStateFlow(LatLng(37.5665, 126.9780)) // 서울의 위도와 경도
     val initialPosition: StateFlow<LatLng> = _initialPosition
 
     suspend fun getNextCanvasId(): String {

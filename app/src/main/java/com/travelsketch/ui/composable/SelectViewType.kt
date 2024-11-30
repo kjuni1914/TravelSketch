@@ -1,4 +1,4 @@
-package com.travelsketch.ui.composable.media
+package com.travelsketch.ui.composable
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

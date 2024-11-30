@@ -24,12 +24,13 @@ class ListViewActivity : ComponentActivity() {
         setContent {
             val canvasList by viewModel.canvasList.collectAsState() // 전체 Canvas 데이터 관찰
 
-            val items = canvasList.map { ListElementData(it.title) }
+            val items = canvasList.map { ListElementData(it.title, it.canvasId) }
 
             ListViewScreen(
                 items = items,
                 onNavigateToListView = { navigateToMapViewActivity() },
-                onNavigateToMapSetup = { navigateToMapSetupActivity() } // 새로운 콜백
+                onNavigateToMapSetup = { navigateToMapSetupActivity() }, // 새로운 콜백
+//                onElementClick = { canvasId -> navigateToCanvasTestActivity(canvasId) } // 클릭 이벤트 처리
             )
         }
 
@@ -49,4 +50,12 @@ class ListViewActivity : ComponentActivity() {
         }
         startActivity(intent)
     }
+
+    // canvas activity에 canvas id 전달
+//    private fun navigateToCanvasTestActivity(canvasId: String) {
+//        val intent = Intent(this, CanvasTestActivity::class.java).apply {
+//            putExtra("CANVAS_ID", canvasId) // canvasId 전달
+//        }
+//        startActivity(intent)
+//    }
 }

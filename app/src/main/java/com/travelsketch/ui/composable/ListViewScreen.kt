@@ -16,13 +16,15 @@ import androidx.compose.ui.unit.sp
 
 data class ListElementData(
     val title: String,
+    val canvasId: String // canvasId 추가
 )
 
 @Composable
 fun ListViewScreen(
     items: List<ListElementData>,
     onNavigateToListView: () -> Unit,
-    onNavigateToMapSetup: () -> Unit
+    onNavigateToMapSetup: () -> Unit,
+//    onElementClick: (String) -> Unit // canvasId 전달 콜백
 
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -33,7 +35,9 @@ fun ListViewScreen(
         ) {
             items(items) { item ->
                 ListElement(
-                    title = item.title
+                    title = item.title,
+                    canvasId = item.canvasId, // canvasId 전달
+//                    onClick = onElementClick // 클릭 이벤트 처리
                 )
             }
         }

@@ -80,6 +80,15 @@ dependencies {
     implementation(libs.google.maps.utils)
     implementation(libs.google.maps.compose)
     implementation ("androidx.fragment:fragment-ktx:1.6.1")
+    implementation ("io.coil-kt:coil-compose:2.0.0") // image dependency
+    implementation("com.squareup.retrofit2:retrofit:2.9.0") // geocoding api
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0") // geocoding api
+    implementation ("com.squareup.okhttp3:okhttp:4.11.0") // geocoding api
+    implementation ("com.google.code.gson:gson:2.10.1") // geocoding api
+//    implementation ("com.google.android.exoplayer:exoplayer:2.19.0") // media video 재생
+    implementation(libs.play.services.location) // 최신 버전 확인 후 업데이트
+
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
