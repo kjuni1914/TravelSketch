@@ -72,8 +72,7 @@ class LoginViewModel : ViewModel() {
                 _isLoading.value = false
                 if (task.isSuccessful) {
                     showSnackbar("Login successful!")
-                    // TODO: 적절한 액티비티 쏴주기
-//                    checkSavedViewType() // 설정된 뷰타입 참조해서 적절한 화면 쏴주기
+                    checkSavedViewType() // 설정된 뷰타입 참조해서 적절한 화면 쏴주기
                 } else {
                     showSnackbar("Login failed: ${task.exception?.message}")
                 }
