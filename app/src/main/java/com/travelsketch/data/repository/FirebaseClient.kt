@@ -1,5 +1,6 @@
 package com.travelsketch.data.repository
 
+import android.util.Log
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.travelsketch.data.local.ViewTypeDao
@@ -216,9 +217,5 @@ object FirebaseClient: DatabaseClient {
 
     override suspend fun setViewType(userId: String, viewType: ViewType) {
         viewTypeDao.setViewType(ViewTypeEntity(userId, viewType))
-    }
-
-    override suspend fun deleteViewType(userId: String) {
-        viewTypeDao.deleteViewType(userId)
     }
 }
