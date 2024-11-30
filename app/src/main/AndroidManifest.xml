@@ -47,17 +47,29 @@
 <!--                <category android:name="android.intent.category.LAUNCHER" />-->
 <!--            </intent-filter>-->
 <!--        </activity>-->
+
         <activity
-            android:name=".ui.activity.MapViewActivity"
+            android:name=".ui.activity.LoginActivity"
             android:exported="true"
-            >
+            android:theme="@android:style/Theme.Material.Light.NoActionBar"
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         <activity
-            android:name=".ui.activity.LoginActivity"
+            android:name=".ui.activity.MapViewActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".ui.activity.ListViewActivity"
             android:exported="true"
             android:theme="@android:style/Theme.Material.Light.NoActionBar"
             android:label="@string/app_name">

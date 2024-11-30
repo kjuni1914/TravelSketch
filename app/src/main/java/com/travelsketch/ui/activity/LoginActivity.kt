@@ -1,30 +1,36 @@
 package com.travelsketch.ui.activity
 
+import SelectViewType
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.room.Room
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.travelsketch.R
+import com.travelsketch.data.local.AppDatabase
+import com.travelsketch.data.repository.FirebaseClient
 import com.travelsketch.ui.composable.FindID
 import com.travelsketch.ui.composable.Login
-import com.travelsketch.ui.composable.NewPasswordInput
 import com.travelsketch.ui.composable.ResetPassword
 import com.travelsketch.ui.composable.SignUp
 import com.travelsketch.ui.layout.UserLayout
@@ -54,7 +60,7 @@ class LoginActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        loginViewModel.setActivity(this)
         val googleSignInOption = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.google_client_id))
             .requestEmail()
@@ -62,11 +68,20 @@ class LoginActivity : ComponentActivity() {
         googleSignInClient = GoogleSignIn.getClient(this, googleSignInOption)
         loginViewModel.userReload()
 
+        val database = Room.databaseBuilder(
+            applicationContext,
+            AppDatabase::class.java,
+            "app_database"
+        ).build()
+
+        loginViewModel.setDatabase(database)
+
         if (loginViewModel.currentUser() != null) {
-            loginViewModel.setCurrentScreen("SelectViewType")
+            loginViewModel.checkSavedViewType()
         } else {
             loginViewModel.setCurrentScreen("Login")
         }
+
 
         setContent {
             val currentScreen by loginViewModel.currentScreen.collectAsState()
@@ -75,10 +90,8 @@ class LoginActivity : ComponentActivity() {
 
             BackHandler {
                 if (loginViewModel.currentUser() != null) {
-                    //로그인 시 메인화면
                     loginViewModel.setCurrentScreen("SelectViewType")
                 } else {
-                    //로그인 전 메인화면
                     loginViewModel.setCurrentScreen("Login")
                 }
             }
@@ -98,6 +111,8 @@ class LoginActivity : ComponentActivity() {
                     "ResetPassword" -> "ResetPassword"
                     "NewPasswordInput" -> "NewPasswordInput"
                     "SelectViewType" -> "SelectViewType"
+                    "MapView" -> "Map View"
+                    "ListView" -> "List View"
                     else -> "Login"
                 },
                 snackbarHostState = snackbarHostState
@@ -119,20 +134,21 @@ class LoginActivity : ComponentActivity() {
                         "SignUp" -> SignUp(
                             onRegisterClick = { email, password, phoneNumber ->
                                 loginViewModel.registerUser(email, password, phoneNumber)
-                            }
+                            },
+                            loginViewModel = loginViewModel
                         )
                         "FindID" -> FindID(
-                            onFindIDClick = {
-                                /* TODO: FindID 연결 */
-                            }
+                            loginViewModel = loginViewModel
                         )
                         "ResetPassword" -> ResetPassword(
-                            onResetPasswordClick = {
-                                loginViewModel.setCurrentScreen("NewPasswordInput")
-                            }
+                            onResetPasswordClick = { email ->
+                                loginViewModel.sendPasswordResetEmail(email)
+                            },
+                            loginViewModel = loginViewModel
                         )
-                        "NewPasswordInput" -> NewPasswordInput()
-                        "SelectViewType" -> SelectViewType()
+                        "SelectViewType" -> SelectViewType(loginViewModel)
+                        "MapView" -> MapViewScreen()
+                        "ListView" -> ListViewScreen()
                     }
                     if (isLoading) {
                         CircularProgressIndicator(
@@ -143,65 +159,27 @@ class LoginActivity : ComponentActivity() {
                     }
                 }
             }
+            val database = Room.databaseBuilder(
+                applicationContext,
+                AppDatabase::class.java,
+                "app_database"
+            ).build()
+
+            FirebaseClient.initViewTypeDao(database.viewTypeDao())
         }
     }
-}
 
-@Composable
-fun SelectViewType() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-//        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = "Select your canvas view type",
-            style = TextStyle(
-                fontSize = 32.sp
-            )
-        )
-
-        IconButton(
-            onClick = {},
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(100.dp)
-                .padding(8.dp)
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(color = Color.LightGray, shape = RoundedCornerShape(4.dp))
-            ) {
-                Text(
-                    text = "Map View",
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
+    @Composable
+    fun MapViewScreen() {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Text("Map View Screen")
         }
+    }
 
-        IconButton(
-            onClick = {},
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(100.dp)
-                .padding(8.dp)
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(color = Color.Gray, shape = RoundedCornerShape(4.dp))
-            ) {
-                Text(
-                    text = "List View",
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
+    @Composable
+    fun ListViewScreen() {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Text("List View Screen")
         }
     }
 }
