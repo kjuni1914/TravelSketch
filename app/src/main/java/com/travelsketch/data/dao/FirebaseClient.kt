@@ -71,6 +71,30 @@ object FirebaseClient: DatabaseClient {
         }
     }
 
+    override suspend fun readUserCanvasData(userId: String): List<CanvasData>? {
+        return try {
+            val snapshot = databaseRef.child("users").child(userId)
+                .child("canvas_ids").get().await()
+            val canvasDataList = mutableListOf<CanvasData>()
+
+            if (snapshot.exists()) {
+                snapshot.children.forEach { child ->
+                    val canvasId = child.value as? String
+                    if (canvasId != null) {
+                        readCanvasData(canvasId)?.let {
+                            canvasDataList.add(it)
+                        }
+                    }
+                }
+            }
+
+            canvasDataList
+        } catch (e: Exception) {
+            Log.d("ITM", "DAO Error: $e")
+            null
+        }
+    }
+
     override suspend fun deleteCanvasData(canvasId: String): Boolean {
         return try {
             databaseRef.child("map").child(canvasId).removeValue().await()
