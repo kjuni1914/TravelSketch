@@ -172,6 +172,33 @@ class FirebaseRepository {
         }
     }
 
+    suspend fun updateFcmToken(userId: String, token: String) {
+        database.child("users").child(userId).child("fcmToken").setValue(token).await()
+    }
+
+    suspend fun getFriendsFcmTokens(userId: String): List<String> {
+        val tokens = mutableListOf<String>()
+        try {
+            // Get the user's friends_ids
+            val friendsSnapshot = database.child("users").child(userId).child("friends_ids").get().await()
+            val friendsIds = friendsSnapshot.children.mapNotNull { it.getValue(String::class.java) }
+
+            // Fetch each friend's FCM token
+            for (friendId in friendsIds) {
+                val tokenSnapshot = database.child("users").child(friendId).child("fcmToken").get().await()
+                val token = tokenSnapshot.getValue(String::class.java)
+                if (token != null) {
+                    tokens.add(token)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("FirebaseRepository", "Failed to fetch friends' FCM tokens", e)
+        }
+        return tokens
+    }
+
+
+
     // Firebase Snapshot을 CanvasData로 변환
     private fun parseMapCanvasData(snapshot: DataSnapshot, canvasId: String): MapData {
         val previewBoxId = snapshot.child("preview_box_id").getValue(String::class.java) ?: ""

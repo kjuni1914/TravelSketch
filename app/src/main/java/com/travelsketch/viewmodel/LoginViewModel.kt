@@ -13,6 +13,8 @@ import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.messaging.FirebaseMessaging
+import com.travelsketch.data.dao.FirebaseRepository
 import com.travelsketch.data.local.AppDatabase
 import com.travelsketch.data.local.ViewTypeEntity
 import com.travelsketch.data.model.User
@@ -40,6 +42,8 @@ class LoginViewModel : ViewModel() {
     private val firebaseAuth = FirebaseAuth.getInstance()
 
     private var verificationId: String? = null
+
+    private val repository = FirebaseRepository()
 
     fun currentUser(): FirebaseUser? {
         return firebaseAuth.currentUser
@@ -71,6 +75,7 @@ class LoginViewModel : ViewModel() {
             .addOnCompleteListener { task ->
                 _isLoading.value = false
                 if (task.isSuccessful) {
+                    saveFcmToken() // FCM 토큰 저장 로직 추가
                     showSnackbar("Login successful!")
                     checkSavedViewType() // 설정된 뷰타입 참조해서 적절한 화면 쏴주기
                 } else {
@@ -98,9 +103,39 @@ class LoginViewModel : ViewModel() {
                     .setValue(newUser)
                     .await()
 
+                saveFcmToken() // FCM 토큰 저장 로직 추가
+
                 _eventFlow.emit("Registration successful!")
             } catch (e: Exception) {
                 _eventFlow.emit("Registration failed: ${e.localizedMessage ?: e.message}")
+            }
+        }
+    }
+    // 푸쉬 알림 fcm 저장코드
+    private fun saveFcmToken() {
+        val userId = currentUser()?.uid
+        if (userId == null) {
+            Log.e("FCM", "User ID is null. Cannot save token.")
+            return
+        }
+
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Log.e("FCM", "Fetching FCM registration token failed", task.exception)
+                return@addOnCompleteListener
+            }
+
+            // Get the FCM token
+            val token = task.result
+            Log.d("FCM", "FCM token fetched: $token")
+
+            viewModelScope.launch {
+                try {
+                    repository.updateFcmToken(userId, token)
+                    Log.d("FCM", "FCM token successfully saved to database")
+                } catch (e: Exception) {
+                    Log.e("FCM", "Failed to save FCM token to database", e)
+                }
             }
         }
     }

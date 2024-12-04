@@ -47,7 +47,7 @@ class ListViewActivity : ComponentActivity() {
                     viewModel.addFriendByEmail(userId, email) // 친구 추가 처리
                 },
                 onToggleVisibility = { canvasId, newVisibility ->
-                    viewModel.toggleCanvasVisibility(canvasId, newVisibility)
+                    viewModel.toggleCanvasVisibility(canvasId, newVisibility,userId)
                 }
 //                onElementClick = { canvasId -> navigateToCanvasTestActivity(canvasId) } // 클릭 이벤트 처리
             )

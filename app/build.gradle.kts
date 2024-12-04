@@ -93,6 +93,7 @@ dependencies {
     implementation ("com.google.code.gson:gson:2.10.1") // geocoding api
 //    implementation ("com.google.android.exoplayer:exoplayer:2.19.0") // media video 재생
     implementation(libs.play.services.location) // 최신 버전 확인 후 업데이트
+    implementation ("com.google.firebase:firebase-messaging:23.1.2") // fcm push 알림
 
 
     testImplementation(libs.junit)

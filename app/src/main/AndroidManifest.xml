@@ -19,6 +19,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
 
+        <service
+            android:name=".api.MyFirebaseMessagingService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!--구글맵 API 사용-->
         <meta-data
             android:name="com.google.android.geo.API_KEY"

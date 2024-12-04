@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
+import com.travelsketch.api.PushNotificationHelper
 import com.travelsketch.data.dao.FirebaseRepository
 import com.travelsketch.data.model.MapData
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -72,14 +73,25 @@ class ListViewModel : ViewModel() {
             _friendCanvasDataList.value = filteredFriendCanvasData
         }
     }
-    // is_visible 값을 변경하는 로직
-    fun toggleCanvasVisibility(canvasId: String, newVisibility: Boolean) {
+    fun toggleCanvasVisibility(canvasId: String, newVisibility: Boolean, userId: String) {
         viewModelScope.launch {
             try {
-                // Firebase에서 is_visible 값 업데이트
                 repository.updateCanvasVisibility(canvasId, newVisibility)
 
-                // 로컬 상태 업데이트
+                if (newVisibility) {
+                    // Fetch friends' FCM tokens
+                    val friendsTokens = repository.getFriendsFcmTokens(userId)
+
+                    // Send push notifications to friends
+                    friendsTokens.forEach { token ->
+                        PushNotificationHelper.sendPushNotification(
+                            to = token,
+                            title = "Canvas Shared",
+                            body = "A new canvas has been shared with you by your friend!"
+                        )
+                    }
+                }
+
                 val updatedList = _canvasList.value.map { canvas ->
                     if (canvas.canvasId == canvasId) {
                         canvas.copy(is_visible = newVisibility)
@@ -88,10 +100,10 @@ class ListViewModel : ViewModel() {
                     }
                 }
                 _canvasList.value = updatedList
-                Log.d("ListViewModel", "Canvas $canvasId visibility updated to $newVisibility")
             } catch (e: Exception) {
-                Log.e("ListViewModel", "Failed to update canvas visibility for $canvasId", e)
+                Log.e("ListViewModel", "Failed to toggle canvas visibility", e)
             }
         }
     }
+
 }
