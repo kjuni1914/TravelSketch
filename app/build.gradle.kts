@@ -1,3 +1,6 @@
+dependencies {
+    implementation("com.airbnb.android:lottie-compose:6.3.0")
+}
 
 plugins {
     alias(libs.plugins.android.application)

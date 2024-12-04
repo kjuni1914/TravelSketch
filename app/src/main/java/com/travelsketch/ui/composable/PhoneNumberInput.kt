@@ -11,12 +11,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.travelsketch.viewmodel.LoginViewModel
 import kotlinx.coroutines.delay
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.text.input.ImeAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,6 +33,7 @@ fun PhoneNumberInput(
     onVerifyCode: (String) -> Unit,
     loginViewModel: LoginViewModel
 ) {
+    val focusRequester1: FocusRequester = remember { FocusRequester() }
     val focusRequester2: FocusRequester = remember { FocusRequester() }
     val focusRequester3: FocusRequester = remember { FocusRequester() }
     val focusRequester4: FocusRequester = remember { FocusRequester() }
@@ -100,47 +107,91 @@ fun PhoneNumberInput(
 
             OutlinedTextField(
                 value = phoneNumber.part1,
-                onValueChange = {
-                    if (it.length <= 3 && it.all { char -> char.isDigit() }) {
-                        onPhoneNumberChange(phoneNumber.copy(part1 = it))
-                        if (it.length == 3) focusRequester2.requestFocus()
+                onValueChange = { newValue ->
+                    if (newValue.length <= 3 && newValue.all { it.isDigit() }) {
+                        onPhoneNumberChange(phoneNumber.copy(part1 = newValue))
+                        if (newValue.length == 3) {
+                            focusRequester2.requestFocus()
+                        }
                     }
                 },
-                label = { Text("Phone") },
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(3f),
-                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
+                label = { Text("") },
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Next
+                ),
+                modifier = Modifier
+                    .weight(3f)
+                    .focusRequester(focusRequester1),
+                textStyle = LocalTextStyle.current.copy(
+                    textAlign = TextAlign.Center,
+                    fontSize = 18.sp
+                )
             )
 
             OutlinedTextField(
                 value = phoneNumber.part2,
-                onValueChange = {
-                    if (it.length <= 4 && it.all { char -> char.isDigit() }) {
-                        onPhoneNumberChange(phoneNumber.copy(part2 = it))
-                        if (it.length == 4) focusRequester3.requestFocus()
+                onValueChange = { newValue ->
+                    if (newValue.length <= 4 && newValue.all { it.isDigit() }) {
+                        onPhoneNumberChange(phoneNumber.copy(part2 = newValue))
+                        if (newValue.length == 4) {
+                            focusRequester3.requestFocus()
+                        }
                     }
                 },
                 label = { Text("") },
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Next
+                ),
                 modifier = Modifier
                     .weight(4f)
-                    .focusRequester(focusRequester2),
-                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontSize = 18.sp)
+                    .focusRequester(focusRequester2)
+                    .onKeyEvent { event ->
+                        if (event.key == Key.Backspace &&
+                            phoneNumber.part2.isEmpty() &&
+                            event.type == KeyEventType.KeyUp) {
+                            focusRequester1.requestFocus()
+                            true
+                        } else {
+                            false
+                        }
+                    },
+                textStyle = LocalTextStyle.current.copy(
+                    textAlign = TextAlign.Center,
+                    fontSize = 18.sp
+                )
             )
 
             OutlinedTextField(
                 value = phoneNumber.part3,
-                onValueChange = {
-                    if (it.length <= 4 && it.all { char -> char.isDigit() }) {
-                        onPhoneNumberChange(phoneNumber.copy(part3 = it))
+                onValueChange = { newValue ->
+                    if (newValue.length <= 4 && newValue.all { it.isDigit() }) {
+                        onPhoneNumberChange(phoneNumber.copy(part3 = newValue))
                     }
                 },
                 label = { Text("") },
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done
+                ),
                 modifier = Modifier
                     .weight(4f)
-                    .focusRequester(focusRequester3),
-                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontSize = 18.sp)
+                    .focusRequester(focusRequester3)
+                    .onKeyEvent { event ->
+                        if (event.key == Key.Backspace &&
+                            phoneNumber.part3.isEmpty() &&
+                            event.type == KeyEventType.KeyUp) {
+                            focusRequester2.requestFocus()
+                            true
+                        } else {
+                            false
+                        }
+                    },
+                textStyle = LocalTextStyle.current.copy(
+                    textAlign = TextAlign.Center,
+                    fontSize = 18.sp
+                )
             )
         }
 

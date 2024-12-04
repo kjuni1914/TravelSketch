@@ -72,12 +72,15 @@ class LoginViewModel : ViewModel() {
                 _isLoading.value = false
                 if (task.isSuccessful) {
                     showSnackbar("Login successful!")
-                    checkSavedViewType() // 설정된 뷰타입 참조해서 적절한 화면 쏴주기
+                    checkSavedViewType()
                 } else {
                     showSnackbar("Login failed: ${task.exception?.message}")
                 }
             }
     }
+
+    val _showCelebration = MutableStateFlow(false)
+    val showCelebration = _showCelebration.asStateFlow()
 
     fun registerUser(email: String, password: String, phoneNumber: String) {
         viewModelScope.launch {
@@ -98,6 +101,7 @@ class LoginViewModel : ViewModel() {
                     .setValue(newUser)
                     .await()
 
+                _showCelebration.value = true
                 _eventFlow.emit("Registration successful!")
             } catch (e: Exception) {
                 _eventFlow.emit("Registration failed: ${e.localizedMessage ?: e.message}")
