@@ -46,6 +46,7 @@ fun SignUp(
     val confirmPasswordFocusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
 
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -157,5 +158,25 @@ fun SignUp(
         ) {
             Text("Sign Up")
         }
+
+        val showCelebration by loginViewModel.showCelebration.collectAsState()
+
+        if (showCelebration) {
+            CelebrationDialog(
+                onDismiss = {
+                    loginViewModel._showCelebration.value = false
+                    loginViewModel.setCurrentScreen("SelectViewType")
+                }
+            )
+        }
+        Button(
+            onClick = {
+                loginViewModel._showCelebration.value = true
+            }
+
+        ) {
+            Text("로그인이펙트")
+        }
     }
+
 }
