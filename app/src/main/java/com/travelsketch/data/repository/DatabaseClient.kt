@@ -1,9 +1,9 @@
 package com.travelsketch.data.repository
 
-import com.travelsketch.data.model.Box
+import com.travelsketch.data.model.BoxData
 import com.travelsketch.data.model.BoxType
-import com.travelsketch.data.model.Canvas
-import com.travelsketch.data.model.User
+import com.travelsketch.data.model.CanvasData
+import com.travelsketch.data.model.UserData
 import com.travelsketch.data.model.ViewType
 
 interface DatabaseClient {
@@ -18,7 +18,7 @@ interface DatabaseClient {
         previewBoxId: String?,
         range: Double
     )
-    suspend fun readCanvas(canvasId: String): Canvas?
+    suspend fun readCanvas(canvasId: String): CanvasData?
     suspend fun updateCanvas(
         canvasId: String,
         avgLatitude: Double?,
@@ -43,7 +43,7 @@ interface DatabaseClient {
         type: String,
         width: Int
     )
-    suspend fun readBox(canvasId:String, boxId: String): Box?
+    suspend fun readBox(canvasId:String, boxId: String): BoxData?
     suspend fun updateBox(
         canvasId: String,
         boxId: String,
@@ -67,7 +67,7 @@ interface DatabaseClient {
         phoneNumber: String,
         email: String
     )
-    suspend fun readUser(userId: String): User?
+    suspend fun readUser(userId: String): UserData?
     suspend fun updateUser(
         userId: String,
         canvasIds: String,

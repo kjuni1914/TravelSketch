@@ -17,7 +17,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.travelsketch.data.dao.FirebaseRepository
 import com.travelsketch.data.local.AppDatabase
 import com.travelsketch.data.local.ViewTypeEntity
-import com.travelsketch.data.model.User
+import com.travelsketch.data.model.UserData
 import com.travelsketch.data.model.ViewType
 import com.travelsketch.ui.activity.ListViewActivity
 import com.travelsketch.ui.activity.MapViewActivity
@@ -90,7 +90,7 @@ class LoginViewModel : ViewModel() {
                 val authResult = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
                 val userId = authResult.user?.uid ?: throw Exception("Failed to retrieve user ID.")
 
-                val newUser = User(
+                val newUser = UserData(
                     email = email,
                     phoneNumber = phoneNumber,
                     canvasIds = "",
@@ -163,7 +163,7 @@ class LoginViewModel : ViewModel() {
                 userRef.get()
                     .addOnSuccessListener { dataSnapshot ->
                         if (!dataSnapshot.exists()) {
-                            val newUser = User(
+                            val newUser = UserData(
                                 email = firebaseAuth.currentUser?.email ?: "",
                                 phoneNumber = "",
                                 canvasIds = "",
@@ -310,7 +310,7 @@ class LoginViewModel : ViewModel() {
 
             if (snapshot.exists()) {
                 for (child in snapshot.children) {
-                    val user = child.getValue(User::class.java)
+                    val user = child.getValue(UserData::class.java)
                     return user?.email
                 }
             }
@@ -338,7 +338,7 @@ class LoginViewModel : ViewModel() {
 
             if (snapshot.exists()) {
                 for (child in snapshot.children) {
-                    val user = child.getValue(User::class.java)
+                    val user = child.getValue(UserData::class.java)
                     if (user?.email == email) {
                         return user.phoneNumber
                     }

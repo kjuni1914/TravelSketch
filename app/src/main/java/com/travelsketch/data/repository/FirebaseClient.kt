@@ -1,14 +1,13 @@
 package com.travelsketch.data.repository
 
-import android.util.Log
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.travelsketch.data.local.ViewTypeDao
 import com.travelsketch.data.local.ViewTypeEntity
-import com.travelsketch.data.model.Box
+import com.travelsketch.data.model.BoxData
 import com.travelsketch.data.model.BoxType
-import com.travelsketch.data.model.Canvas
-import com.travelsketch.data.model.User
+import com.travelsketch.data.model.CanvasData
+import com.travelsketch.data.model.UserData
 import com.travelsketch.data.model.ViewType
 import kotlinx.coroutines.tasks.await
 import kotlin.coroutines.resume
@@ -27,7 +26,7 @@ object FirebaseClient: DatabaseClient {
         previewBoxId: String?,
         range: Double
     ) {
-        val canvas = Canvas(
+        val canvas = CanvasData(
             avgLongitude = avgLongitude,
             avgLatitude = avgLatitude,
             isVisible = isVisible,
@@ -37,11 +36,11 @@ object FirebaseClient: DatabaseClient {
         database.child("map").child(canvasId).setValue(canvas).await()
     }
 
-    override suspend fun readCanvas(canvasId: String): Canvas? {
+    override suspend fun readCanvas(canvasId: String): CanvasData? {
         return suspendCoroutine { continuation ->
             database.child("map").child(canvasId).get().addOnSuccessListener { dataSnapshot ->
                 if (dataSnapshot.exists()) {
-                    val canvas = dataSnapshot.getValue(Canvas::class.java)
+                    val canvas = dataSnapshot.getValue(CanvasData::class.java)
                     continuation.resume(canvas)
                 } else {
                     continuation.resume(null)
@@ -60,7 +59,7 @@ object FirebaseClient: DatabaseClient {
         previewBoxId: String?,
         range: Double
     ) {
-        val updatedCanvas = Canvas(
+        val updatedCanvas = CanvasData(
             avgLatitude = avgLatitude,
             avgLongitude = avgLongitude,
             isVisible = isVisible,
@@ -89,7 +88,7 @@ object FirebaseClient: DatabaseClient {
         type: String,
         width: Int
     ) {
-        val box = Box(
+        val box = BoxData(
             boxX = boxX,
             boxY = boxY,
             boxZ = boxZ,
@@ -103,19 +102,19 @@ object FirebaseClient: DatabaseClient {
         database.child("canvas").child(canvasId).child(boxId).setValue(box).await()
     }
 
-    override suspend fun readBox(canvasId:String, boxId: String): Box? {
+    override suspend fun readBox(canvasId:String, boxId: String): BoxData? {
         return suspendCoroutine { continuation ->
             database.child("canvas").child(canvasId).child(boxId).get()
                 .addOnSuccessListener { dataSnapshot ->
-                if (dataSnapshot.exists()) {
-                    val boxData = dataSnapshot.getValue(Box::class.java)
-                    continuation.resume(boxData)
-                } else {
-                    continuation.resume(null)
+                    if (dataSnapshot.exists()) {
+                        val boxData = dataSnapshot.getValue(BoxData::class.java)
+                        continuation.resume(boxData)
+                    } else {
+                        continuation.resume(null)
+                    }
+                }.addOnFailureListener { exception ->
+                    continuation.resumeWithException(exception)
                 }
-            }.addOnFailureListener { exception ->
-                continuation.resumeWithException(exception)
-            }
         }
     }
 
@@ -134,7 +133,7 @@ object FirebaseClient: DatabaseClient {
         type: BoxType,
         width: Int
     ) {
-        val updatedBox = Box(
+        val updatedBox = BoxData(
             boxX = boxX,
             boxY = boxY,
             boxZ = boxZ,
@@ -159,7 +158,7 @@ object FirebaseClient: DatabaseClient {
         phoneNumber: String,
         email: String
     ) {
-        val user = User(
+        val user = UserData(
             phoneNumber = phoneNumber,
             canvasIds = canvasIds,
             friendIds = friendIds,
@@ -168,19 +167,19 @@ object FirebaseClient: DatabaseClient {
         database.child("users").child(userId).setValue(user).await()
     }
 
-    override suspend fun readUser(userId: String): User? {
+    override suspend fun readUser(userId: String): UserData? {
         return suspendCoroutine { continuation ->
             database.child("users").child(userId).get()
                 .addOnSuccessListener { dataSnapshot ->
                     if (dataSnapshot.exists()) {
-                        val user = dataSnapshot.getValue(User::class.java)
+                        val user = dataSnapshot.getValue(UserData::class.java)
                         continuation.resume(user)
                     } else {
                         continuation.resume(null)
                     }
-            }.addOnFailureListener { exception ->
-                continuation.resumeWithException(exception)
-            }
+                }.addOnFailureListener { exception ->
+                    continuation.resumeWithException(exception)
+                }
         }
     }
 
@@ -191,7 +190,7 @@ object FirebaseClient: DatabaseClient {
         phoneNumber: String,
         email: String
     ) {
-        val updatedUser = User(
+        val updatedUser = UserData(
             phoneNumber = phoneNumber,
             canvasIds = canvasIds,
             friendIds = friendIds,

@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
 import com.travelsketch.data.dao.FirebaseRepository
 import com.travelsketch.data.model.MapData
-import com.travelsketch.data.repository.FirebaseClient.database
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
