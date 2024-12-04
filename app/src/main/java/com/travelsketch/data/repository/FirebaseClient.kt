@@ -84,7 +84,7 @@ object FirebaseClient: DatabaseClient {
         height: Int,
         latitude: Double?,
         longitude: Double?,
-        time: Int?,
+        time: Long?,
         type: String,
         width: Int
     ) {
@@ -129,7 +129,7 @@ object FirebaseClient: DatabaseClient {
         height: Int,
         latitude: Double?,
         longitude: Double?,
-        time: Int?,
+        time: Long?,
         type: BoxType,
         width: Int
     ) {
@@ -203,7 +203,6 @@ object FirebaseClient: DatabaseClient {
         database.child("users").child(userId).removeValue().await()
     }
 
-
     private lateinit var viewTypeDao: ViewTypeDao
 
     fun initViewTypeDao(viewTypeDao: ViewTypeDao) {
@@ -217,4 +216,5 @@ object FirebaseClient: DatabaseClient {
     override suspend fun setViewType(userId: String, viewType: ViewType) {
         viewTypeDao.setViewType(ViewTypeEntity(userId, viewType))
     }
+
 }

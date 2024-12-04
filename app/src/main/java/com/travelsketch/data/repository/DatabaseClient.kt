@@ -39,7 +39,7 @@ interface DatabaseClient {
         height: Int,
         latitude: Double?,
         longitude: Double?,
-        time: Int?,
+        time: Long?,
         type: String,
         width: Int
     )
@@ -55,7 +55,7 @@ interface DatabaseClient {
         height: Int,
         latitude: Double?,
         longitude: Double?,
-        time: Int?,
+        time: Long?,
         type: BoxType,
         width: Int
     )

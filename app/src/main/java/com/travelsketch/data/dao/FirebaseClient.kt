@@ -197,5 +197,4 @@ object FirebaseClient: DatabaseClient {
             false
         }
     }
-
 }

@@ -33,7 +33,7 @@ class MapViewModel : ViewModel() {
     // 특정 사용자의 canvas_ids에 해당하는 Map 데이터를 가져오는 함수
     fun readUserMapCanvasData(userId: String) {
         viewModelScope.launch {
-            val canvasIds = readUserCanvasIds(userId) // 사용자 canvas_ids 가져오기
+            val canvasIds = repository.readUserCanvasIds(userId) // 사용자 canvas_ids 가져오기
             val allCanvasData = repository.readAllMapCanvasData() // 모든 Canvas 데이터 읽기
 
             // canvasIds와 일치하는 데이터만 필터링
@@ -42,23 +42,6 @@ class MapViewModel : ViewModel() {
             }
 
             _userCanvasDataList.value = filteredCanvasData // 상태 업데이트
-        }
-    }
-
-    // 사용자의 canvas_ids 읽기
-    suspend fun readUserCanvasIds(userId: String): List<String> {
-        return try {
-            val snapshot = database.child("users").child(userId).child("canvas_ids").get().await()
-            if (snapshot.exists()) {
-                // 데이터를 반복문으로 수집하여 List<String>으로 변환
-                snapshot.children.mapNotNull { it.getValue(String::class.java) }
-            } else {
-                Log.w("FirebaseRepository", "No canvas_ids found for userId: $userId")
-                emptyList()
-            }
-        } catch (e: Exception) {
-            Log.e("FirebaseRepository", "Failed to fetch canvas_ids for userId: $userId", e)
-            emptyList()
         }
     }
 
