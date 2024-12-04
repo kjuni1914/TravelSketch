@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import com.google.firebase.auth.FirebaseAuth
 import com.travelsketch.viewmodel.ListViewModel
 
 class ListViewActivity : ComponentActivity() {
@@ -19,17 +20,35 @@ class ListViewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        viewModel.readAllMapCanvasData()
+        // 사용자 ID 가져오기
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId == null) {
+            Log.d("ListViewActivity", "사용자가 로그인되어 있지 않습니다.")
+            finish()
+            return
+        }
+
+        viewModel.readUserMapCanvasData(userId)
+        viewModel.readFriendMapCanvasData(userId) // 친구 데이터 가져오기 추가
 
         setContent {
             val canvasList by viewModel.canvasList.collectAsState() // 전체 Canvas 데이터 관찰
+            val friendCanvasList by viewModel.friendCanvasDataList.collectAsState() // 친구 데이터 관찰
 
-            val items = canvasList.map { ListElementData(it.title, it.canvasId) }
+            val items = canvasList.map { ListElementData(it.title, it.canvasId, it.is_visible) }
+            val friendItems = friendCanvasList.map { ListElementData(it.title, it.canvasId, it.is_visible) }
 
             ListViewScreen(
                 items = items,
+                friendItems = friendItems,
                 onNavigateToListView = { navigateToMapViewActivity() },
                 onNavigateToMapSetup = { navigateToMapSetupActivity() }, // 새로운 콜백
+                onAddFriend = { email ->
+                    viewModel.addFriendByEmail(userId, email) // 친구 추가 처리
+                },
+                onToggleVisibility = { canvasId, newVisibility ->
+                    viewModel.toggleCanvasVisibility(canvasId, newVisibility)
+                }
 //                onElementClick = { canvasId -> navigateToCanvasTestActivity(canvasId) } // 클릭 이벤트 처리
             )
         }

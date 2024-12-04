@@ -70,7 +70,7 @@ class LoginActivity : ComponentActivity() {
             .requestEmail()
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, googleSignInOption)
-        loginViewModel.userReload() // 자동로그아웃
+//        loginViewModel.userReload() // 자동로그아웃
 
         val database = Room.databaseBuilder(
             applicationContext,

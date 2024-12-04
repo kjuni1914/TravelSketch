@@ -11,7 +11,8 @@ import com.travelsketch.ui.fragment.MapViewFragment
 @Composable
 fun HostMapAndMapViewFragments(
     fragmentManager: FragmentManager,
-    initialFragment: String
+    initialFragment: String,
+    userId: String // 사용자 ID 추가
 ) {
     val mapSetupFragmentTag = "MapSetupFragment"
     val mapViewFragmentTag = "MapViewFragment"
@@ -19,7 +20,7 @@ fun HostMapAndMapViewFragments(
     val fragment = remember {
         when (initialFragment) {
             "MAP_VIEW" -> fragmentManager.findFragmentByTag(mapViewFragmentTag)
-                ?: MapViewFragment()
+                ?: MapViewFragment.newInstance(userId) // 사용자 ID 전달
             else -> fragmentManager.findFragmentByTag(mapSetupFragmentTag)
                 ?: MapSetupFragment()
         }

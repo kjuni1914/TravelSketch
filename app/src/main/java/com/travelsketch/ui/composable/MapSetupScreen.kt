@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.firebase.auth.FirebaseAuth
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.travelsketch.api.RetrofitInstance
 import com.travelsketch.ui.composable.CenterMarker
@@ -41,7 +42,12 @@ fun MapSetupScreen(
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(initialPosition, 15f)
     }
-
+// FirebaseAuth를 통해 userId 가져오기
+    val userId = FirebaseAuth.getInstance().currentUser?.uid
+    if (userId == null) {
+        Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+        return
+    }
 //    var searchText by remember { mutableStateOf("") }
     var searchText by remember { mutableStateOf("") } // 검색 텍스트 상태
     var selectedPosition by remember { mutableStateOf(initialPosition) }
@@ -173,12 +179,13 @@ fun MapSetupScreen(
                     val avg_gps_longitude = selectedPosition.longitude
                     val map_canvas_title = mapCanvasTitle
 
-                mapViewModel.createMapCanvasData(
-                    canvasId = canvas_id,
-                    avgGpsLatitude = avg_gps_latitude,
-                    avgGpsLongitude = avg_gps_longitude,
-                    title = map_canvas_title
-                )
+                    mapViewModel.createMapCanvasData(
+                        userId = userId,
+                        canvasId = canvas_id,
+                        avgGpsLatitude = avg_gps_latitude,
+                        avgGpsLongitude = avg_gps_longitude,
+                        title = map_canvas_title
+                    )
                     onLocationConfirmed(selectedPosition)
                 }
                       },

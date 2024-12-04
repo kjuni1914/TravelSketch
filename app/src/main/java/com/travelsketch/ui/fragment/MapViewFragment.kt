@@ -1,10 +1,13 @@
 package com.travelsketch.ui.fragment
 
 import MapViewScreen
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.annotation.RequiresExtension
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
@@ -21,13 +24,17 @@ class MapViewFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // 안전하게 arguments를 가져오도록 수정
+        val userId = arguments?.getString(ARG_USER_ID)
+        if (userId.isNullOrEmpty()) {
+            Log.e("MapViewFragment", "사용자 ID가 제공되지 않았습니다.")
+            return
+        }
         initialPosition = arguments?.getParcelable(ARG_LAT_LNG) ?: LatLng(37.5665, 126.9780)
-
-
         mapViewModel.updateInitialPosition(initialPosition)
-        mapViewModel.fetchAllCanvasData() // Firebase에서 모든 캔버스 데이터 가져오기
+        mapViewModel.readUserMapCanvasData(userId) // 사용자 관련 Canvas 데이터 로드
     }
 
+    @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -60,11 +67,12 @@ class MapViewFragment : Fragment() {
 
     companion object {
         private const val ARG_LAT_LNG = "arg_lat_lng"
+        private const val ARG_USER_ID = "arg_user_id"
 
-        fun newInstance(latLng: LatLng): MapViewFragment {
+        fun newInstance(userId: String): MapViewFragment {
             return MapViewFragment().apply {
                 arguments = Bundle().apply {
-                    putParcelable(ARG_LAT_LNG, latLng) // 정확한 키와 데이터 추가
+                    putString(ARG_USER_ID, userId) // 사용자 ID 전달
                 }
             }
         }
