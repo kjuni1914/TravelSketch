@@ -75,7 +75,6 @@ class LoginViewModel : ViewModel() {
             .addOnCompleteListener { task ->
                 _isLoading.value = false
                 if (task.isSuccessful) {
-                    saveFcmToken() // FCM 토큰 저장 로직 추가
                     showSnackbar("Login successful!")
                     checkSavedViewType() // 설정된 뷰타입 참조해서 적절한 화면 쏴주기
                 } else {
@@ -105,37 +104,10 @@ class LoginViewModel : ViewModel() {
 
                 saveFcmToken() // FCM 토큰 저장 로직 추가
 
+                _showCelebration.value = true
                 _eventFlow.emit("Registration successful!")
             } catch (e: Exception) {
                 _eventFlow.emit("Registration failed: ${e.localizedMessage ?: e.message}")
-            }
-        }
-    }
-    // 푸쉬 알림 fcm 저장코드
-    private fun saveFcmToken() {
-        val userId = currentUser()?.uid
-        if (userId == null) {
-            Log.e("FCM", "User ID is null. Cannot save token.")
-            return
-        }
-
-        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            if (!task.isSuccessful) {
-                Log.e("FCM", "Fetching FCM registration token failed", task.exception)
-                return@addOnCompleteListener
-            }
-
-            // Get the FCM token
-            val token = task.result
-            Log.d("FCM", "FCM token fetched: $token")
-
-            viewModelScope.launch {
-                try {
-                    repository.updateFcmToken(userId, token)
-                    Log.d("FCM", "FCM token successfully saved to database")
-                } catch (e: Exception) {
-                    Log.e("FCM", "Failed to save FCM token to database", e)
-                }
             }
         }
     }
