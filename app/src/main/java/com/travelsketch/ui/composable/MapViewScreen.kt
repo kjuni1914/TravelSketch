@@ -219,7 +219,8 @@ fun MapViewScreen(
                         onClick = {
                             // 친구 마커 클릭 시 동작
                             println("Friend Marker clicked at: ${canvas.avg_gps_latitude}, ${canvas.avg_gps_longitude}")
-                        }
+                        },
+                        borderColor = Color.Green // Use hexadecimal value for green color
                     )
                 }
             }

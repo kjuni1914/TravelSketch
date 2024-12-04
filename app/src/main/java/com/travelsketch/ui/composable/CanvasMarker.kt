@@ -9,6 +9,7 @@ import android.graphics.Paint
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import coil.ImageLoader
 import coil.request.ImageRequest
@@ -27,7 +28,8 @@ fun CanvasMarker(
     imageResId: Int? = null,
     imageUrl: String? = null,
     cameraPositionState: CameraPositionState,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    borderColor: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Transparent // Default to no border
 ) {
     val context = LocalContext.current
 
@@ -43,18 +45,19 @@ fun CanvasMarker(
             imageUrl != null -> {
                 try {
                     // Firebase Storage 이미지 불러오기
-                    getScaledBitmapDescriptorWithBackgroundFromUrl(context, imageUrl, width, height)
+                    getScaledBitmapDescriptorWithBackgroundFromUrl(context, imageUrl, width, height,borderColor.toArgb() // Color to Int
+                    )
                 } catch (e: Exception) {
                     e.printStackTrace()
                     // Firebase에서 실패하면 기본 이미지 사용
-                    getScaledBitmapDescriptorWithBackground(context, R.drawable.paris, width, height).also {
+                    getScaledBitmapDescriptorWithBackground(context, R.drawable.paris, width, height, borderColor.toArgb()).also {
                         println("Fallback to local image R.drawable.paris")
                     }
                 }
             }
             imageResId != null -> {
                 // 로컬 이미지 사용
-                getScaledBitmapDescriptorWithBackground(context, imageResId, width, height).also {
+                getScaledBitmapDescriptorWithBackground(context, imageResId, width, height, borderColor.toArgb()).also {
                     println("Using local image resource: R.drawable.paris")
                 }
             }
@@ -89,8 +92,9 @@ fun calculateMarkerSize(zoom: Float): Pair<Int, Int> {
 }
 
 
-fun getScaledBitmapDescriptorWithBackground(context: Context, drawableRes: Int, width: Int, height: Int): BitmapDescriptor {
-    val customBitmap = createCustomMarkerBitmap(context, drawableRes, width, height)
+fun getScaledBitmapDescriptorWithBackground(context: Context, drawableRes: Int, width: Int, height: Int, borderColor: Int
+): BitmapDescriptor {
+    val customBitmap = createCustomMarkerBitmap(context, drawableRes, width, height, borderColor)
     return BitmapDescriptorFactory.fromBitmap(customBitmap)
 }
 
@@ -100,7 +104,8 @@ suspend fun getScaledBitmapDescriptorWithBackgroundFromUrl(
     context: Context,
     imageUrl: String,
     width: Int,
-    height: Int
+    height: Int,
+    borderColor: Int
 ): BitmapDescriptor? {
     return try {
         val loader = ImageLoader(context)
@@ -138,11 +143,12 @@ suspend fun getScaledBitmapDescriptorWithBackgroundFromUrl(
     } catch (e: Exception) {
         e.printStackTrace()
         println("Failed to load image from URL, falling back to default")
-        getScaledBitmapDescriptorWithBackground(context, R.drawable.paris, width, height)
+        getScaledBitmapDescriptorWithBackground(context, R.drawable.paris, width, height,borderColor)
     }
 }
 
-fun createCustomMarkerBitmap(context: Context, drawableRes: Int, width: Int, height: Int): Bitmap {
+fun createCustomMarkerBitmap(context: Context, drawableRes: Int, width: Int, height: Int, borderColor: Int
+): Bitmap {
     // 원본 이미지를 로드
     val originalBitmap = BitmapFactory.decodeResource(context.resources, drawableRes)
 
@@ -156,7 +162,7 @@ fun createCustomMarkerBitmap(context: Context, drawableRes: Int, width: Int, hei
 
     // 네모 배경 그리기
     val paint = Paint()
-    paint.color = Color.DKGRAY // 배경 색상 (칠판처럼 보이게)
+    paint.color = borderColor // 배경 색상 (칠판처럼 보이게)
     paint.style = Paint.Style.FILL
     canvas.drawRect(0f, 0f, backgroundWidth.toFloat(), backgroundHeight.toFloat(), paint)
 
