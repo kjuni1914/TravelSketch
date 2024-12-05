@@ -17,13 +17,22 @@ class CanvasActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Intent에서 canvasId 가져오기
+        val canvasId = intent.getStringExtra("CANVAS_ID")
+        if (canvasId == null) {
+            Log.e("CanvasActivity", "No canvas ID provided")
+            finish()
+            return
+        }
+
         val canvasViewModel = ViewModelProvider(this)[CanvasViewModel::class.java]
-        canvasViewModel.viewAllBoxes()
+        // canvasId로 ViewModel 초기화
+        canvasViewModel.initializeCanvas(canvasId)
 
         setContent {
             CanvasEditLayout(
                 canvas = {
-                    CanvasScreen(canvasViewModel) // 원래의 CanvasScreen 내용을 넣음
+                    CanvasScreen(canvasViewModel)
                 },
                 button = {
                     Button(

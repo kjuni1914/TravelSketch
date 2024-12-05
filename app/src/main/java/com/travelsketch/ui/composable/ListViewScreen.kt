@@ -34,9 +34,9 @@ fun ListViewScreen(
     onNavigateToListView: () -> Unit,
     onNavigateToMapSetup: () -> Unit,
     onAddFriend: (String) -> Unit, // 친구 추가 콜백\
-    onToggleVisibility: (String, Boolean) -> Unit // visibility 변경 콜백 추가
+    onToggleVisibility: (String, Boolean) -> Unit, // visibility 변경 콜백 추가
 //    onElementClick: (String) -> Unit // canvasId 전달 콜백
-
+    onNavigateToCanvas: (String) -> Unit
 ) {
     // 팝업 상태 관리
     var showPopup by remember { mutableStateOf(false) }
@@ -54,7 +54,8 @@ fun ListViewScreen(
                     canvasId = item.canvasId, // canvasId 전달
                     isCurrentUserCanvas = true, // 현재 사용자의 캔버스
                     isVisible = item.isVisible, // 초기 is_visible 값
-                    onToggleVisibility = onToggleVisibility
+                    onToggleVisibility = onToggleVisibility,
+                    onNavigateToCanvas = { onNavigateToCanvas(item.canvasId) }
 //                    onClick = onElementClick // 클릭 이벤트 처리
                 )
             }
@@ -77,8 +78,8 @@ fun ListViewScreen(
                     canvasId = item.canvasId,
                     isCurrentUserCanvas = false, // 친구의 캔버스
                     isVisible = true, // 초기 is_visible 값
-                    onToggleVisibility = { _, _ -> } // 비어 있는 콜백 전달
-
+                    onToggleVisibility = { _, _ -> }, // 비어 있는 콜백 전달
+                    onNavigateToCanvas = { onNavigateToCanvas(item.canvasId) }
                 )
             }
         }

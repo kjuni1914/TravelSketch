@@ -117,5 +117,4 @@ fun CanvasScreen(canvasViewModel: CanvasViewModel) {
             }
         }
     )
-
 }

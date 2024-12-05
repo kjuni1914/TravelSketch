@@ -6,14 +6,62 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.travelsketch.data.dao.FirebaseClient
 import com.travelsketch.data.model.BoxData
 import kotlinx.coroutines.launch
 
-class CanvasViewModel : ViewModel() {
-    var canvasId = "canvas_1"
+class CanvasViewModel(
+    private val savedStateHandle: SavedStateHandle
+) : ViewModel() {
+
+    private val _canvasId = mutableStateOf<String?>(null)
+
+    fun initializeCanvas(id: String) {
+        _canvasId.value = id
+        viewAllBoxes()
+    }
+
+    fun viewAllBoxes() {
+        _canvasId.value?.let { canvasId ->
+            viewModelScope.launch {
+                FirebaseClient.readAllBoxData(canvasId)?.forEach { box ->
+                    if (box.type == "TEXT") {
+                        if (box.width == 0)
+                            box.width = defaultBrush.value.measureText(box.data).toInt()
+                        if (box.height == 0)
+                            box.height = defaultBrush.value.measureText(box.data).toInt()
+                    }
+                    boxes.add(box)
+                }
+            }
+        }
+    }
+
+    fun saveAll() {
+        _canvasId.value?.let { canvasId ->
+            var idx = 0
+            viewModelScope.launch {
+                boxes.forEach { box ->
+                    FirebaseClient.writeBoxData(
+                        canvasId,
+                        "box_$idx",
+                        boxData = box
+                    )
+                    idx++
+                }
+                while (FirebaseClient.deleteBoxData(
+                        canvasId,
+                        "box_$idx"
+                    )
+                ) {
+                    idx++
+                }
+            }
+        }
+    }
 
     var scale = mutableFloatStateOf(1f)
     var offsetX = mutableFloatStateOf(0f)
@@ -52,22 +100,6 @@ class CanvasViewModel : ViewModel() {
 
     fun toggleIsEditable() {
         isEditable.value = !isEditable.value
-    }
-
-    fun viewAllBoxes() {
-        viewModelScope.launch {
-            FirebaseClient.readAllBoxData(
-                canvasId = canvasId
-            )?.forEach { box ->
-                if (box.type == "TEXT") {
-                    if (box.width == 0)
-                        box.width = defaultBrush.value.measureText(box.data).toInt()
-                    if (box.height == 0)
-                        box.height = defaultBrush.value.measureText(box.data).toInt()
-                }
-                boxes.add(box)
-            }
-        }
     }
 
     fun select(box: BoxData) {
@@ -132,26 +164,6 @@ class CanvasViewModel : ViewModel() {
         selected.value = null
     }
 
-    fun saveAll() {
-        var idx = 0
-
-        viewModelScope.launch {
-            boxes.forEach { box ->
-                FirebaseClient.writeBoxData(
-                    canvasId,
-                    "box_$idx",
-                    boxData = box
-                )
-                idx++
-            }
-            while (FirebaseClient.deleteBoxData(
-                    canvasId,
-                    "box_$idx"
-                )) {
-                idx++
-            }
-        }
-    }
 
     fun defaultAction() {
         editingText.value = TextFieldValue(selected.value!!.data)

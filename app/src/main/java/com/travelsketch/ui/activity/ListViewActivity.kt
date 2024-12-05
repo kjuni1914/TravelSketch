@@ -48,8 +48,10 @@ class ListViewActivity : ComponentActivity() {
                 },
                 onToggleVisibility = { canvasId, newVisibility ->
                     viewModel.toggleCanvasVisibility(canvasId, newVisibility,userId)
-                }
+                },
 //                onElementClick = { canvasId -> navigateToCanvasTestActivity(canvasId) } // 클릭 이벤트 처리
+                onNavigateToCanvas = { canvasId -> navigateToCanvas(canvasId) }
+
             )
         }
 
@@ -66,6 +68,13 @@ class ListViewActivity : ComponentActivity() {
     fun navigateToMapSetupActivity() {
         val intent = Intent(this, MapViewActivity::class.java).apply {
             putExtra("FRAGMENT", "MAP_SETUP") // MapSetupFragment 요청
+        }
+        startActivity(intent)
+    }
+
+    private fun navigateToCanvas(canvasId: String) {
+        val intent = Intent(this, CanvasActivity::class.java).apply {
+            putExtra("CANVAS_ID", canvasId)
         }
         startActivity(intent)
     }
