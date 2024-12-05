@@ -76,7 +76,7 @@ fun ListViewScreen(
                     title = item.title,
                     canvasId = item.canvasId,
                     isCurrentUserCanvas = false, // 친구의 캔버스
-                    isVisible = true, // 초기 is_visible 값
+                    isVisible = item.isVisible, // 초기 is_visible 값
                     onToggleVisibility = { _, _ -> } // 비어 있는 콜백 전달
 
                 )
