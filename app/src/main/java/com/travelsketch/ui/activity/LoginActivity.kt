@@ -2,6 +2,7 @@ package com.travelsketch.ui.activity
 
 import SelectViewType
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -19,14 +20,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.room.Room
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.travelsketch.R
+import com.travelsketch.data.local.AppDatabase
+import com.travelsketch.data.repository.FirebaseClient
 import com.travelsketch.ui.composable.FindID
 import com.travelsketch.ui.composable.Login
-import com.travelsketch.ui.composable.NewPasswordInput
 import com.travelsketch.ui.composable.ResetPassword
 import com.travelsketch.ui.composable.SignUp
 import com.travelsketch.ui.layout.UserLayout
@@ -56,19 +59,47 @@ class LoginActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        loginViewModel.setActivity(this)
         val googleSignInOption = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.google_client_id))
             .requestEmail()
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, googleSignInOption)
-        loginViewModel.userReload()
+        loginViewModel.userReload() // 자동로그아웃
+
+        val database = Room.databaseBuilder(
+            applicationContext,
+            AppDatabase::class.java,
+            "app_database"
+        )
+//            .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
+//            .addCallback(object : RoomDatabase.Callback() {
+//                override fun onCreate(db: SupportSQLiteDatabase) {
+//                    super.onCreate(db)
+//                    Log.d("Room", "Database created")
+//                }
+//
+//                override fun onOpen(db: SupportSQLiteDatabase) {
+//                    super.onOpen(db)
+//                    Log.d("Room", "Database opened")
+//                }
+//            })
+//            .setQueryCallback({ sqlQuery, bindArgs ->
+//                Log.d("Room", "SQL Query: $sqlQuery")
+//                Log.d("Room", "Args: $bindArgs")
+//            }, Executors.newSingleThreadExecutor())
+            .build()
+
+
+        loginViewModel.setDatabase(database)
+        FirebaseClient.initViewTypeDao(database.viewTypeDao())
 
         if (loginViewModel.currentUser() != null) {
-            loginViewModel.setCurrentScreen("SelectViewType")
+            loginViewModel.checkSavedViewType()
         } else {
             loginViewModel.setCurrentScreen("Login")
         }
+
 
         setContent {
             val currentScreen by loginViewModel.currentScreen.collectAsState()
@@ -77,10 +108,8 @@ class LoginActivity : ComponentActivity() {
 
             BackHandler {
                 if (loginViewModel.currentUser() != null) {
-                    //로그인 시 메인화면
                     loginViewModel.setCurrentScreen("SelectViewType")
                 } else {
-                    //로그인 전 메인화면
                     loginViewModel.setCurrentScreen("Login")
                 }
             }
@@ -121,20 +150,19 @@ class LoginActivity : ComponentActivity() {
                         "SignUp" -> SignUp(
                             onRegisterClick = { email, password, phoneNumber ->
                                 loginViewModel.registerUser(email, password, phoneNumber)
-                            }
+                            },
+                            loginViewModel = loginViewModel
                         )
                         "FindID" -> FindID(
-                            onFindIDClick = {
-                                /* TODO: FindID 연결 */
-                            }
+                            loginViewModel = loginViewModel
                         )
                         "ResetPassword" -> ResetPassword(
-                            onResetPasswordClick = {
-                                loginViewModel.setCurrentScreen("NewPasswordInput")
-                            }
+                            onResetPasswordClick = { email ->
+                                loginViewModel.sendPasswordResetEmail(email)
+                            },
+                            loginViewModel = loginViewModel
                         )
-                        "NewPasswordInput" -> NewPasswordInput()
-                        "SelectViewType" -> SelectViewType()
+                        "SelectViewType" -> SelectViewType(loginViewModel)
                     }
                     if (isLoading) {
                         CircularProgressIndicator(

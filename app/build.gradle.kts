@@ -1,8 +1,12 @@
+dependencies {
+    implementation("com.airbnb.android:lottie-compose:6.3.0")
+}
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.gms.google-services")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -52,6 +56,11 @@ android {
 }
 
 dependencies {
+    implementation("androidx.room:room-runtime:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    implementation("androidx.compose.material:material-icons-extended:1.5.1") // 준희 // 비밀번호 보이기|가리기 버튼
+    implementation("com.google.android.gms:play-services-auth:20.7.0") // 준희 // 구글 로그인 API
     implementation("androidx.compose.material:material-icons-extended:1.5.1") // 준희 // 비밀번호 보이기|가리기 버튼
     implementation("com.google.android.gms:play-services-auth:20.7.0") // 준희 // 구글 로그인 API
     implementation("com.kakao.sdk:v2-all:2.20.6") // 전체 모듈 설치, 2.11.0 버전부터 지원
@@ -79,6 +88,17 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.google.maps.utils)
     implementation(libs.google.maps.compose)
+    implementation ("androidx.fragment:fragment-ktx:1.6.1")
+    implementation ("io.coil-kt:coil-compose:2.0.0") // image dependency
+    implementation("com.squareup.retrofit2:retrofit:2.9.0") // geocoding api
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0") // geocoding api
+    implementation ("com.squareup.okhttp3:okhttp:4.11.0") // geocoding api
+    implementation ("com.google.code.gson:gson:2.10.1") // geocoding api
+//    implementation ("com.google.android.exoplayer:exoplayer:2.19.0") // media video 재생
+    implementation(libs.play.services.location) // 최신 버전 확인 후 업데이트
+    implementation ("com.google.firebase:firebase-messaging:23.1.2") // fcm push 알림
+
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

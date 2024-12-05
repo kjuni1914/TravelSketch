@@ -71,7 +71,7 @@ object FirebaseClient: DatabaseClient {
         }
     }
 
-    override suspend fun readUserCanvasData(userId: String): List<CanvasData>? {
+    suspend fun readUserCanvasData(userId: String): List<CanvasData>? {
         return try {
             val snapshot = databaseRef.child("users").child(userId)
                 .child("canvas_ids").get().await()
@@ -197,5 +197,4 @@ object FirebaseClient: DatabaseClient {
             false
         }
     }
-
 }

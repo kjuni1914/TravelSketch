@@ -15,7 +15,6 @@ interface DatabaseClient {
     suspend fun writeCanvasData(canvasId:String, canvasData: CanvasData): Boolean
     suspend fun readCanvasData(canvasId: String): CanvasData?
     suspend fun readAllCanvasData(): List<CanvasData>?
-    suspend fun readUserCanvasData(userId: String): List<CanvasData>?
     suspend fun deleteCanvasData(canvasId: String): Boolean
 
     suspend fun writeBoxData(canvasId: String, boxId: String, boxData: BoxData): Boolean

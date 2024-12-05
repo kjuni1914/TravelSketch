@@ -10,9 +10,9 @@ data class UserData(
     @get:PropertyName("canvas_ids") @set:PropertyName("canvas_ids") var canvasIds: String = "",
     @get:PropertyName("friends_ids") @set:PropertyName("friends_ids") var friendIds: String = "",
     @get:PropertyName("phone_number") @set:PropertyName("phone_number") var phoneNumber: String = "",
-    @get:PropertyName("view_type") @set:PropertyName("view_type") var viewType: Boolean = true
+    @get:PropertyName("email") @set:PropertyName("email") var email: String = ""
 ) {
     override fun toString(): String {
-        return "User(canvasIds='$canvasIds', friendIds='$friendIds', phoneNumber='$phoneNumber', viewType=$viewType)"
+        return "User(canvasIds='$canvasIds', friendIds='$friendIds', phoneNumber='$phoneNumber')"
     }
 }
