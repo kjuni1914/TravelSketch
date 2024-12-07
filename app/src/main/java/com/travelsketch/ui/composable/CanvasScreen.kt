@@ -1,6 +1,5 @@
 package com.travelsketch.ui.composable
 
-import android.graphics.Color
 import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -13,6 +12,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
@@ -20,6 +21,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.toSize
 import com.travelsketch.data.model.BoxData
+import com.travelsketch.data.model.BoxType
 import com.travelsketch.viewmodel.CanvasViewModel
 
 data class CanvasState(
@@ -39,7 +41,7 @@ fun CanvasScreen(
     // Paints
     val boundaryPaint = remember {
         Paint().apply {
-            color = Color.BLACK
+            color = android.graphics.Color.BLACK
             style = Paint.Style.STROKE
             strokeWidth = 5f
         }
@@ -47,7 +49,7 @@ fun CanvasScreen(
 
     val boxPaint = remember {
         Paint().apply {
-            color = Color.BLACK
+            color = android.graphics.Color.BLACK
             style = Paint.Style.FILL
         }
     }
@@ -68,13 +70,27 @@ fun CanvasScreen(
             val scaledWidth = box.width!! * canvasState.scale
             val scaledHeight = box.height!! * canvasState.scale
 
-            canvas.nativeCanvas.drawRect(
-                screenPos.x,
-                screenPos.y - scaledHeight,
-                screenPos.x + scaledWidth,
-                screenPos.y,
-                boxPaint
-            )
+            if (box.type == BoxType.TEXT.toString()) {
+                val scaledPaint = Paint(viewModel.defaultBrush.value).apply {
+                    textSize = viewModel.defaultBrush.value.textSize * canvasState.scale
+                    textAlign = Paint.Align.CENTER
+                }
+
+                canvas.nativeCanvas.drawText(
+                    box.data,
+                    screenPos.x + scaledWidth/2,
+                    screenPos.y + (scaledHeight/2 - (scaledPaint.descent() + scaledPaint.ascent())/2),
+                    scaledPaint
+                )
+            } else {
+                canvas.nativeCanvas.drawRect(
+                    screenPos.x,
+                    screenPos.y - scaledHeight,
+                    screenPos.x + scaledWidth,
+                    screenPos.y,
+                    boxPaint
+                )
+            }
         }
     }
 
@@ -85,12 +101,11 @@ fun CanvasScreen(
             val scaledHeight = box.height!! * canvasState.scale
             val handleRadius = 5f * canvasState.scale
 
-            // Draw selection handles
             canvas.nativeCanvas.run {
                 drawCircle(screenPos.x, screenPos.y, handleRadius, viewModel.selectBrush.value)
-                drawCircle(screenPos.x, screenPos.y - scaledHeight, handleRadius, viewModel.selectBrush.value)
+                drawCircle(screenPos.x, screenPos.y + scaledHeight, handleRadius, viewModel.selectBrush.value)
                 drawCircle(screenPos.x + scaledWidth, screenPos.y, handleRadius, viewModel.selectBrush.value)
-                drawCircle(screenPos.x + scaledWidth, screenPos.y - scaledHeight, handleRadius, viewModel.selectBrush.value)
+                drawCircle(screenPos.x + scaledWidth, screenPos.y + scaledHeight, handleRadius, viewModel.selectBrush.value)
             }
         }
     }
@@ -106,51 +121,61 @@ fun CanvasScreen(
                 )
                 viewModel.setScreenSize(size.width, size.height)
             }
-            // transformable 대신 gesture detector를 통한 제스처 감지
             .pointerInput(Unit) {
-                detectTransformGestures(
-                    onGesture = { centroid, pan, zoom, _ ->
-                        val oldScale = canvasState.scale
-                        val newScale = (oldScale * zoom).coerceIn(0.1f, 5f)
+                detectTransformGestures { centroid, pan, zoom, _ ->
+                    val oldScale = canvasState.scale
+                    val newScale = (oldScale * zoom).coerceIn(0.1f, 5f)
 
-                        // 확대/축소 시 중심점을 기준으로 offset 재계산
-                        val o = canvasState.offset
-                        val c = centroid
-                        val scaleFactor = newScale / oldScale
-                        val newOffset = Offset(
-                            x = o.x + (c.x - o.x) * (1 - scaleFactor),
-                            y = o.y + (c.y - o.y) * (1 - scaleFactor)
-                        ) + pan
+                    val o = canvasState.offset
+                    val c = centroid
+                    val scaleFactor = newScale / oldScale
+                    val newOffset = Offset(
+                        x = o.x + (c.x - o.x) * (1 - scaleFactor),
+                        y = o.y + (c.y - o.y) * (1 - scaleFactor)
+                    ) + pan
 
-                        canvasState = canvasState.copy(
-                            scale = newScale,
-                            offset = newOffset
-                        )
-                    }
-                )
+                    canvasState = canvasState.copy(
+                        scale = newScale,
+                        offset = newOffset
+                    )
+                }
             }
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
                     val canvasPos = screenToCanvas(offset)
 
-                    // Check if we hit an existing box
-                    val hitBox = viewModel.boxes.findLast { box ->
-                        val boxPos = Offset(box.boxX.toFloat(), box.boxY.toFloat())
-                        val boxSize = Offset(box.width!!.toFloat(), box.height!!.toFloat())
-
-                        canvasPos.x >= boxPos.x &&
-                                canvasPos.x <= boxPos.x + boxSize.x &&
-                                canvasPos.y >= boxPos.y - boxSize.y &&
-                                canvasPos.y <= boxPos.y
-                    }
-
-                    if (hitBox == null) {
-                        onTapForBox(canvasPos)
+                    if (viewModel.isTextPlacementMode.value) {
+                        viewModel.createTextBox(canvasPos.x, canvasPos.y)
                     } else {
-                        if (hitBox != viewModel.selected.value) {
-                            viewModel.select(hitBox)
+                        val hitBox = viewModel.boxes.findLast { box ->
+                            val boxPos = Offset(box.boxX.toFloat(), box.boxY.toFloat())
+                            val boxSize = Offset(box.width!!.toFloat(), box.height!!.toFloat())
+
+                            if (box.type == BoxType.TEXT.toString()) {
+                                canvasPos.x >= boxPos.x &&
+                                        canvasPos.x <= boxPos.x + boxSize.x &&
+                                        canvasPos.y >= boxPos.y &&
+                                        canvasPos.y <= boxPos.y + boxSize.y
+                            } else {
+                                canvasPos.x >= boxPos.x &&
+                                        canvasPos.x <= boxPos.x + boxSize.x &&
+                                        canvasPos.y >= boxPos.y - boxSize.y &&
+                                        canvasPos.y <= boxPos.y
+                            }
+                        }
+
+                        if (hitBox == null) {
+                            if (viewModel.selected.value != null) {
+                                viewModel.clearSelection()
+                            } else {
+                                onTapForBox(canvasPos)
+                            }
                         } else {
-                            viewModel.defaultAction()
+                            if (hitBox != viewModel.selected.value) {
+                                viewModel.select(hitBox)
+                            } else {
+                                viewModel.defaultAction()
+                            }
                         }
                     }
                 }
@@ -172,5 +197,17 @@ fun CanvasScreen(
 
         // Draw selection handles if there's a selected box
         viewModel.selected.value?.let { selected -> drawSelectionHandles(selected) }
+
+        // Draw overlay when in text placement mode
+        if (viewModel.isTextPlacementMode.value) {
+            drawRect(
+                color = Color.Gray.copy(alpha = 0.2f),
+                topLeft = Offset(canvasState.offset.x, canvasState.offset.y),
+                size = Size(
+                    viewModel.canvasWidth * canvasState.scale,
+                    viewModel.canvasHeight * canvasState.scale
+                )
+            )
+        }
     }
 }

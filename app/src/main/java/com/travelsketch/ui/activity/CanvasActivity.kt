@@ -14,6 +14,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.travelsketch.ui.composable.CanvasScreen
 import com.travelsketch.ui.composable.Editor
 import com.travelsketch.ui.composable.StatusBar
+import com.travelsketch.ui.composable.TextInputDialog
 import com.travelsketch.ui.layout.CanvasEditLayout
 import com.travelsketch.viewmodel.CanvasViewModel
 
@@ -35,6 +36,16 @@ class CanvasActivity : ComponentActivity() {
             val showDialog = remember { mutableStateOf(false) }
             val isEditing = remember { mutableStateOf(false) }
             val lastTapPosition = remember { mutableStateOf<Offset?>(null) }
+
+            if (showDialog.value) {
+                TextInputDialog(
+                    onDismiss = { showDialog.value = false },
+                    onConfirm = { text ->
+                        canvasViewModel.startTextPlacement(text)
+                        showDialog.value = false
+                    }
+                )
+            }
 
             CanvasEditLayout(
                 canvas = {
