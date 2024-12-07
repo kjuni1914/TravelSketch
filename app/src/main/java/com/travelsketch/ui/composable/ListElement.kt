@@ -19,7 +19,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.constraintlayout.motion.widget.MotionScene.Transition.TransitionOnClick
 import com.travelsketch.R
 
 @Composable
@@ -28,8 +27,9 @@ fun ListElement(
     canvasId: String, // canvasId 추가
     isVisible: Boolean, // 현재 is_visible 값
     isCurrentUserCanvas: Boolean, // 현재 사용자의 캔버스인지 여부
-    onToggleVisibility: (String, Boolean) -> Unit // visibility 변경 콜백 추가
+    onToggleVisibility: (String, Boolean) -> Unit, // visibility 변경 콜백 추가
 //    onClick: (String) -> Unit // canvasId를 전달하는 콜백
+    onNavigateToCanvas: (String) -> Unit
 ) {
     var isVisibleState by remember { mutableStateOf(isVisible) }
 
@@ -74,6 +74,9 @@ fun ListElement(
                 modifier = Modifier
                     .absoluteOffset(x = 300.dp, y = 5.dp) // 상단 우측 고정
                     .size(40.dp) // 크기 고정
+                    .clickable {
+                        onNavigateToCanvas(canvasId)
+                    }
             )
 
             // Share 버튼 (Edit 버튼 오른쪽)
