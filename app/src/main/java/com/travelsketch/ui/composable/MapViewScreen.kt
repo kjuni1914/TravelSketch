@@ -109,7 +109,7 @@ fun MapViewScreen(
         val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
         val shakeListener = object : SensorEventListener {
-            private val shakeThreshold = 12.0f
+            private val shakeThreshold = 20.0f
             private var lastTime: Long = 0
 
             override fun onSensorChanged(event: SensorEvent?) {

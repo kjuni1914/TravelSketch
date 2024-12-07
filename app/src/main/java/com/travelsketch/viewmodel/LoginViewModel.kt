@@ -76,6 +76,7 @@ class LoginViewModel : ViewModel() {
                 _isLoading.value = false
                 if (task.isSuccessful) {
                     showSnackbar("Login successful!")
+                    saveFcmToken() // FCM 토큰 저장
                     checkSavedViewType() // 설정된 뷰타입 참조해서 적절한 화면 쏴주기
                 } else {
                     showSnackbar("Login failed: ${task.exception?.message}")

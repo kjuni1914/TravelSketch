@@ -16,8 +16,36 @@ import kotlinx.coroutines.launch
 class CanvasViewModel(
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-
     private val _canvasId = mutableStateOf<String?>(null)
+
+    val canvasWidth = 10000f
+    val canvasHeight = 8000f
+
+    var scale = mutableFloatStateOf(1f)
+    var offsetX = mutableFloatStateOf(0f)
+    var offsetY = mutableFloatStateOf(0f)
+
+    var focus = mutableStateOf(false)
+    var isEditable = mutableStateOf(true)
+    var boxes = mutableStateListOf<BoxData>()
+    var selected = mutableStateOf<BoxData?>(null)
+    var log = mutableStateOf("")
+
+    var editingText = mutableStateOf(TextFieldValue(""))
+
+    var defaultBrush = mutableStateOf(Paint().apply {
+        color = Color.BLACK
+        textSize = 70f
+        textAlign = Paint.Align.LEFT
+    })
+
+    var selectBrush = mutableStateOf(Paint().apply {
+        color = Color.BLUE
+        style = Paint.Style.FILL
+    })
+
+    private var screenWidth = 0f
+    private var screenHeight = 0f
 
     fun initializeCanvas(id: String) {
         _canvasId.value = id
@@ -38,6 +66,61 @@ class CanvasViewModel(
                 }
             }
         }
+    }
+
+    fun initializeViewport(screenWidth: Float, screenHeight: Float) {
+        this.screenWidth = screenWidth
+        this.screenHeight = screenHeight
+
+        scale.floatValue = minOf(
+            screenWidth / (canvasWidth / 2),
+            screenHeight / (canvasHeight / 2)
+        )
+
+        offsetX.floatValue = (screenWidth - canvasWidth * scale.floatValue) / 2
+        offsetY.floatValue = (screenHeight - canvasHeight * scale.floatValue) / 2
+    }
+
+    fun updateScale(zoom: Float, focusX: Float, focusY: Float) {
+        val oldScale = scale.floatValue
+        val newScale = (oldScale * zoom).coerceIn(0.1f, 5f)
+
+        val focusPointX = (focusX - offsetX.floatValue) / oldScale
+        val focusPointY = (focusY - offsetY.floatValue) / oldScale
+
+        scale.floatValue = newScale
+
+        offsetX.floatValue = focusX - focusPointX * newScale
+        offsetY.floatValue = focusY - focusPointY * newScale
+    }
+
+    fun updateOffset(panX: Float, panY: Float) {
+        offsetX.floatValue += panX
+        offsetY.floatValue += panY
+    }
+
+    fun setScreenSize(width: Float, height: Float) {
+        if (screenWidth == 0f && screenHeight == 0f) {
+            initializeViewport(width, height)
+        }
+        screenWidth = width
+        screenHeight = height
+    }
+
+    fun toggleIsEditable() {
+        isEditable.value = !isEditable.value
+    }
+
+    fun select(box: BoxData) {
+        selected.value = box
+    }
+
+    fun unselect() {
+        selected.value = null
+    }
+
+    fun getEditable(): Boolean {
+        return isEditable.value
     }
 
     fun saveAll() {
@@ -63,63 +146,6 @@ class CanvasViewModel(
         }
     }
 
-    var scale = mutableFloatStateOf(1f)
-    var offsetX = mutableFloatStateOf(0f)
-    var offsetY = mutableFloatStateOf(0f)
-    var centerX = mutableFloatStateOf(0f)
-    var centerY = mutableFloatStateOf(0f)
-
-    var focus = mutableStateOf(false)
-    var isEditable = mutableStateOf(true)
-    var boxes = mutableStateListOf<BoxData>()
-    var selected = mutableStateOf<BoxData?>(null)
-    var log = mutableStateOf("")
-
-    // State for editing text
-    var editingText = mutableStateOf(TextFieldValue(""))
-
-    var defaultBrush = mutableStateOf( Paint().apply {
-        color = Color.BLACK
-        textSize = 70f
-        textAlign = Paint.Align.LEFT
-    } )
-
-    var selectBrush = mutableStateOf( Paint().apply {
-        color = Color.BLUE
-        style = Paint.Style.FILL
-    } )
-
-    fun updateScale(newScale: Float) {
-        scale.floatValue *= newScale
-    }
-
-    fun updateOffset(panX: Float, panY: Float) {
-        offsetX.floatValue += panX
-        offsetY.floatValue += panY
-    }
-
-    fun toggleIsEditable() {
-        isEditable.value = !isEditable.value
-    }
-
-    fun select(box: BoxData) {
-        selected.value = box
-    }
-
-    fun unselect() {
-        selected.value = null
-    }
-
-    fun getEditable(): Boolean {
-        return isEditable.value
-    }
-
-    fun setCenter(x: Float, y: Float) {
-        centerX.value = x
-        centerY.value = y
-        log.value = "${centerX.value}, ${centerY.value}"
-    }
-
     private fun createBox(
         type: String,
         data: String,
@@ -129,11 +155,17 @@ class CanvasViewModel(
         longitude: Double,
         time: Long
     ) {
+        val screenCenterX = screenWidth / 2
+        val screenCenterY = screenHeight / 2
+
+        val canvasX = (screenCenterX - offsetX.floatValue) / scale.floatValue
+        val canvasY = (screenCenterY - offsetY.floatValue) / scale.floatValue
+
         val boxData = BoxData(
             type = type,
             data = data,
-            boxX = centerX.floatValue.toInt(),
-            boxY = centerY.floatValue.toInt(),
+            boxX = canvasX.toInt(),
+            boxY = canvasY.toInt(),
             boxZ = 0,
             width = width,
             height = height,
@@ -163,7 +195,6 @@ class CanvasViewModel(
         boxes.remove(selected.value)
         selected.value = null
     }
-
 
     fun defaultAction() {
         editingText.value = TextFieldValue(selected.value!!.data)
