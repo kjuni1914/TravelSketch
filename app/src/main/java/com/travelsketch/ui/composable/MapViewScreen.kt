@@ -46,7 +46,8 @@ import kotlinx.coroutines.launch
 fun MapViewScreen(
     viewModel: MapViewModel,
     onNavigateToListView: () -> Unit,
-    onNavigateToMapSetup: () -> Unit
+    onNavigateToMapSetup: () -> Unit,
+    onNavigateToCanvas: (String) -> Unit // canvasId를 전달받는 콜백 추가
 ) {
     // 초기 상태 및 Firebase 데이터 상태 관찰
     val initialPosition = viewModel.initialPosition.collectAsState()
@@ -187,10 +188,11 @@ fun MapViewScreen(
                         position = LatLng(canvas.avg_gps_latitude, canvas.avg_gps_longitude),
                         imageUrl = imageUrl, // 사용자 Firebase Storage 이미지 URL 전달
                         imageResId = R.drawable.paris, // paris.png를 사용자 마커 아이콘으로 설정
+                        canvasId = canvas.toString(), // canvasId 전달
                         cameraPositionState = cameraPositionState,
-                        onClick = {
+                        onClick = { canvasId ->
                             // 사용자 마커 클릭 시 동작
-                            println("User Marker clicked at: ${canvas.avg_gps_latitude}, ${canvas.avg_gps_longitude}")
+                            onNavigateToCanvas(canvasId) // CanvasActivity로 이동
                         }
                     )
                 }
@@ -214,13 +216,14 @@ fun MapViewScreen(
                     CanvasMarker(
                         position = LatLng(canvas.avg_gps_latitude, canvas.avg_gps_longitude),
                         imageUrl = imageUrl, // 친구 Firebase Storage 이미지 URL 전달
+                        canvasId = canvas.toString(),
                         imageResId = R.drawable.paris, // 친구 마커 아이콘 설정
                         cameraPositionState = cameraPositionState,
-                        onClick = {
+                        onClick = { canvasId ->
                             // 친구 마커 클릭 시 동작
-                            println("Friend Marker clicked at: ${canvas.avg_gps_latitude}, ${canvas.avg_gps_longitude}")
+                            onNavigateToCanvas(canvasId) // CanvasActivity로 이동
                         },
-                        borderColor = Color.Green // Use hexadecimal value for green color
+                        borderColor = Color.Green
                     )
                 }
             }

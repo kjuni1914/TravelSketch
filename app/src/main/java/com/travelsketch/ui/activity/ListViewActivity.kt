@@ -79,7 +79,7 @@ class ListViewActivity : ComponentActivity() {
         startActivity(intent)
     }
 
-    // canvas activity에 canvas id 전달
+//    canvas activity에 canvas id 전달
 //    private fun navigateToCanvasTestActivity(canvasId: String) {
 //        val intent = Intent(this, CanvasTestActivity::class.java).apply {
 //            putExtra("CANVAS_ID", canvasId) // canvasId 전달

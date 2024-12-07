@@ -28,7 +28,8 @@ fun CanvasMarker(
     imageResId: Int? = null,
     imageUrl: String? = null,
     cameraPositionState: CameraPositionState,
-    onClick: () -> Unit,
+    onClick: (String) -> Unit, // canvas_id를 전달받는 콜백
+    canvasId: String, // canvasId 추가
     borderColor: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Transparent // Default to no border
 ) {
     val context = LocalContext.current
@@ -75,7 +76,7 @@ fun CanvasMarker(
             state = MarkerState(position = position),
             icon = customIcon,
             onClick = {
-                onClick()
+                onClick(canvasId) // canvasId 전달
                 true
             }
         )
