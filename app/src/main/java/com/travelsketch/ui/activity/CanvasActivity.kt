@@ -59,14 +59,13 @@ class CanvasActivity : ComponentActivity() {
                 }
             )
 
-            // 다이얼로그 표시
             if (showDialog.value) {
                 InputTextDialog(
                     onDismiss = { showDialog.value = false },
                     onConfirm = { text ->
                         showDialog.value = false
                         inputText.value = text
-                        canvasViewModel.createText(text) // 입력받은 텍스트로 Box 생성
+                        canvasViewModel.createText(text)
                     }
                 )
             }

@@ -24,7 +24,7 @@ import com.travelsketch.viewmodel.CanvasViewModel
 @Composable
 fun Editor(
     canvasViewModel: CanvasViewModel,
-    showDialog: MutableState<Boolean> // 다이얼로그 상태 전달
+    showDialog: MutableState<Boolean>
 ) {
     val selected by canvasViewModel.selected
 
@@ -60,7 +60,7 @@ fun Editor(
                     .padding(2.dp)
                     .clickable {
                         when (res) {
-                            R.drawable.text_btn -> showDialog.value = true // 텍스트 버튼 클릭 시 다이얼로그 표시
+                            R.drawable.text_btn -> showDialog.value = true
                             R.drawable.save_btn -> canvasViewModel.saveAll()
                             R.drawable.delete_btn -> canvasViewModel.delete()
                         }

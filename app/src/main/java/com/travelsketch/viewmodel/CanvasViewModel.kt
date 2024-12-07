@@ -20,7 +20,7 @@ class CanvasViewModel(
     val canvasWidth = 10000f
     val canvasHeight = 8000f
 
-    var scale = mutableStateOf(1f) // 수정: mutableFloatStateOf -> mutableStateOf
+    var scale = mutableStateOf(1f)
     var offsetX = mutableStateOf(0f)
     var offsetY = mutableStateOf(0f)
 
