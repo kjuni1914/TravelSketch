@@ -2,9 +2,8 @@ package com.travelsketch.viewmodel
 
 import android.graphics.Color
 import android.graphics.Paint
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -21,9 +20,9 @@ class CanvasViewModel(
     val canvasWidth = 10000f
     val canvasHeight = 8000f
 
-    var scale = mutableFloatStateOf(1f)
-    var offsetX = mutableFloatStateOf(0f)
-    var offsetY = mutableFloatStateOf(0f)
+    var scale = mutableStateOf(1f) // 수정: mutableFloatStateOf -> mutableStateOf
+    var offsetX = mutableStateOf(0f)
+    var offsetY = mutableStateOf(0f)
 
     var focus = mutableStateOf(false)
     var isEditable = mutableStateOf(true)
@@ -68,35 +67,35 @@ class CanvasViewModel(
         }
     }
 
-    fun initializeViewport(screenWidth: Float, screenHeight: Float) {
-        this.screenWidth = screenWidth
-        this.screenHeight = screenHeight
+    fun initializeViewport(width: Float, height: Float) {
+        this.screenWidth = width
+        this.screenHeight = height
 
-        scale.floatValue = minOf(
-            screenWidth / (canvasWidth / 2),
-            screenHeight / (canvasHeight / 2)
+        scale.value = minOf(
+            width / (canvasWidth / 2),
+            height / (canvasHeight / 2)
         )
 
-        offsetX.floatValue = (screenWidth - canvasWidth * scale.floatValue) / 2
-        offsetY.floatValue = (screenHeight - canvasHeight * scale.floatValue) / 2
+        offsetX.value = (width - canvasWidth * scale.value) / 2
+        offsetY.value = (height - canvasHeight * scale.value) / 2
     }
 
     fun updateScale(zoom: Float, focusX: Float, focusY: Float) {
-        val oldScale = scale.floatValue
+        val oldScale = scale.value
         val newScale = (oldScale * zoom).coerceIn(0.1f, 5f)
 
-        val focusPointX = (focusX - offsetX.floatValue) / oldScale
-        val focusPointY = (focusY - offsetY.floatValue) / oldScale
+        val canvasX = (focusX - offsetX.value) / oldScale
+        val canvasY = (focusY - offsetY.value) / oldScale
 
-        scale.floatValue = newScale
+        scale.value = newScale
 
-        offsetX.floatValue = focusX - focusPointX * newScale
-        offsetY.floatValue = focusY - focusPointY * newScale
+        offsetX.value = focusX - (canvasX * newScale)
+        offsetY.value = focusY - (canvasY * newScale)
     }
 
     fun updateOffset(panX: Float, panY: Float) {
-        offsetX.floatValue += panX
-        offsetY.floatValue += panY
+        offsetX.value += panX
+        offsetY.value += panY
     }
 
     fun setScreenSize(width: Float, height: Float) {
@@ -158,8 +157,8 @@ class CanvasViewModel(
         val screenCenterX = screenWidth / 2
         val screenCenterY = screenHeight / 2
 
-        val canvasX = (screenCenterX - offsetX.floatValue) / scale.floatValue
-        val canvasY = (screenCenterY - offsetY.floatValue) / scale.floatValue
+        val canvasX = (screenCenterX - offsetX.value) / scale.value
+        val canvasY = (screenCenterY - offsetY.value) / scale.value
 
         val boxData = BoxData(
             type = type,
@@ -177,13 +176,13 @@ class CanvasViewModel(
         boxes.add(boxData)
     }
 
-    fun createText() {
+    fun createText(text: String) {
         val fontMetrics = defaultBrush.value.fontMetrics
         val textHeight = fontMetrics.descent - fontMetrics.ascent
         createBox(
             type = "TEXT",
-            data = "text",
-            width = defaultBrush.value.measureText("text").toInt(),
+            data = text,
+            width = defaultBrush.value.measureText(text).toInt(),
             height = textHeight.toInt(),
             latitude = .0,
             longitude = .0,

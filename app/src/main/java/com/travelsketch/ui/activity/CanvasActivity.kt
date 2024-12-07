@@ -4,8 +4,13 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModelProvider
 import com.travelsketch.ui.composable.CanvasScreen
 import com.travelsketch.ui.composable.Editor
@@ -17,7 +22,6 @@ class CanvasActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Intent에서 canvasId 가져오기
         val canvasId = intent.getStringExtra("CANVAS_ID")
         if (canvasId == null) {
             Log.e("CanvasActivity", "No canvas ID provided")
@@ -26,10 +30,12 @@ class CanvasActivity : ComponentActivity() {
         }
 
         val canvasViewModel = ViewModelProvider(this)[CanvasViewModel::class.java]
-        // canvasId로 ViewModel 초기화
         canvasViewModel.initializeCanvas(canvasId)
 
         setContent {
+            val showDialog = remember { mutableStateOf(false) }
+            val inputText = remember { mutableStateOf("") }
+
             CanvasEditLayout(
                 canvas = {
                     CanvasScreen(canvasViewModel)
@@ -45,13 +51,55 @@ class CanvasActivity : ComponentActivity() {
                 },
                 editor = {
                     if (canvasViewModel.getEditable()) {
-                        Editor(canvasViewModel)
+                        Editor(canvasViewModel, showDialog)
                     }
                 },
                 statusBar = {
                     StatusBar(canvasViewModel)
                 }
             )
+
+            // 다이얼로그 표시
+            if (showDialog.value) {
+                InputTextDialog(
+                    onDismiss = { showDialog.value = false },
+                    onConfirm = { text ->
+                        showDialog.value = false
+                        inputText.value = text
+                        canvasViewModel.createText(text) // 입력받은 텍스트로 Box 생성
+                    }
+                )
+            }
         }
     }
+}
+
+@Composable
+fun InputTextDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    val textState = remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text("Enter Text") },
+        text = {
+            TextField(
+                value = textState.value,
+                onValueChange = { textState.value = it },
+                label = { Text("Text") }
+            )
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(textState.value) }) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            Button(onClick = { onDismiss() }) {
+                Text("Cancel")
+            }
+        }
+    )
 }
