@@ -21,17 +21,15 @@ class CanvasViewModel(
     val canvasWidth = 10000f
     val canvasHeight = 8000f
 
-    var scale = mutableStateOf(1f)
-    var offsetX = mutableStateOf(0f)
-    var offsetY = mutableStateOf(0f)
-
-    var focus = mutableStateOf(false)
     var isEditable = mutableStateOf(true)
     var boxes = mutableStateListOf<BoxData>()
     var selected = mutableStateOf<BoxData?>(null)
+    var editingText = mutableStateOf(TextFieldValue(""))
+
     var log = mutableStateOf("")
 
-    var editingText = mutableStateOf(TextFieldValue(""))
+    var isTextPlacementMode = mutableStateOf(false)
+    var textToPlace = mutableStateOf("")
 
     var defaultBrush = mutableStateOf(Paint().apply {
         color = Color.BLACK
@@ -68,41 +66,7 @@ class CanvasViewModel(
         }
     }
 
-    fun initializeViewport(width: Float, height: Float) {
-        this.screenWidth = width
-        this.screenHeight = height
-
-        scale.value = minOf(
-            width / (canvasWidth / 2),
-            height / (canvasHeight / 2)
-        )
-
-        offsetX.value = (width - canvasWidth * scale.value) / 2
-        offsetY.value = (height - canvasHeight * scale.value) / 2
-    }
-
-    fun updateScale(zoom: Float, focusX: Float, focusY: Float) {
-        val oldScale = scale.value
-        val newScale = (oldScale * zoom).coerceIn(0.1f, 5f)
-
-        val canvasX = (focusX - offsetX.value) / oldScale
-        val canvasY = (focusY - offsetY.value) / oldScale
-
-        scale.value = newScale
-
-        offsetX.value = focusX - (canvasX * newScale)
-        offsetY.value = focusY - (canvasY * newScale)
-    }
-
-    fun updateOffset(panX: Float, panY: Float) {
-        offsetX.value += panX
-        offsetY.value += panY
-    }
-
     fun setScreenSize(width: Float, height: Float) {
-        if (screenWidth == 0f && screenHeight == 0f) {
-            initializeViewport(width, height)
-        }
         screenWidth = width
         screenHeight = height
     }
@@ -115,7 +79,7 @@ class CanvasViewModel(
         selected.value = box
     }
 
-    fun unselect() {
+    fun clearSelection() {
         selected.value = null
     }
 
@@ -135,68 +99,53 @@ class CanvasViewModel(
                     )
                     idx++
                 }
-                while (FirebaseClient.deleteBoxData(
-                        canvasId,
-                        "box_$idx"
-                    )
-                ) {
+                while (FirebaseClient.deleteBoxData(canvasId, "box_$idx")) {
                     idx++
                 }
             }
         }
     }
 
+    fun startTextPlacement(text: String) {
+        textToPlace.value = text
+        isTextPlacementMode.value = true
+    }
+
     fun createBox(canvasX: Float, canvasY: Float) {
-        val boxSize = 50
+        if (isTextPlacementMode.value) {
+            createTextBox(canvasX, canvasY)
+        } else {
+            val boxSize = 50
+            val box = BoxData(
+                boxX = canvasX.toInt(),
+                boxY = canvasY.toInt(),
+                width = boxSize,
+                height = boxSize,
+                type = BoxType.TEXT.toString()
+            )
+            boxes.add(box)
+        }
+    }
+
+    fun createTextBox(canvasX: Float, canvasY: Float) {
+        val text = textToPlace.value
+        val paint = defaultBrush.value
+        val textWidth = paint.measureText(text).toInt()
+        val textHeight = (-paint.ascent() + paint.descent()).toInt()
+
         val box = BoxData(
-            boxX = canvasX.toInt(),
-            boxY = canvasY.toInt(),
-            width = boxSize,
-            height = boxSize,
-            type = BoxType.TEXT.toString()
+            boxX = (canvasX - textWidth/2).toInt(),
+            boxY = (canvasY - textHeight/2).toInt(),
+            width = textWidth,
+            height = textHeight,
+            type = BoxType.TEXT.toString(),
+            data = text
         )
         boxes.add(box)
+        isTextPlacementMode.value = false
+        textToPlace.value = ""
     }
 
-//    private fun createBox(
-//        type: String,
-//        data: String,
-//        width: Int,
-//        height: Int,
-//        latitude: Double,
-//        longitude: Double,
-//        time: Long
-//    ) {
-//        val screenCenterX = screenWidth / 2
-//        val screenCenterY = screenHeight / 2
-//
-//        val canvasX = (screenCenterX - offsetX.value) / scale.value
-//        val canvasY = (screenCenterY - offsetY.value) / scale.value
-//
-//        val boxData = BoxData(
-//            type = type,
-//            data = data,
-//            boxX = canvasX.toInt(),
-//            boxY = canvasY.toInt(),
-//            boxZ = 0,
-//            width = width,
-//            height = height,
-//            degree = 0,
-//            longitude = longitude,
-//            latitude = latitude,
-//            time = time
-//        )
-//        boxes.add(boxData)
-//    }
-
-    fun createText(text: String, x: Int, y: Int) {
-        val box = BoxData(
-            boxX = x,
-            boxY = y,
-            data = text,
-            type = BoxType.TEXT.toString()
-        )
-    }
     fun delete() {
         boxes.remove(selected.value)
         selected.value = null
