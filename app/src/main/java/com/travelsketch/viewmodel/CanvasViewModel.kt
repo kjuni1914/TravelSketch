@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.travelsketch.data.dao.FirebaseClient
 import com.travelsketch.data.model.BoxData
+import com.travelsketch.data.model.BoxType
 import kotlinx.coroutines.launch
 
 class CanvasViewModel(
@@ -145,51 +146,57 @@ class CanvasViewModel(
         }
     }
 
-    private fun createBox(
-        type: String,
-        data: String,
-        width: Int,
-        height: Int,
-        latitude: Double,
-        longitude: Double,
-        time: Long
-    ) {
-        val screenCenterX = screenWidth / 2
-        val screenCenterY = screenHeight / 2
-
-        val canvasX = (screenCenterX - offsetX.value) / scale.value
-        val canvasY = (screenCenterY - offsetY.value) / scale.value
-
-        val boxData = BoxData(
-            type = type,
-            data = data,
+    fun createBox(canvasX: Float, canvasY: Float) {
+        val boxSize = 50
+        val box = BoxData(
             boxX = canvasX.toInt(),
             boxY = canvasY.toInt(),
-            boxZ = 0,
-            width = width,
-            height = height,
-            degree = 0,
-            longitude = longitude,
-            latitude = latitude,
-            time = time
+            width = boxSize,
+            height = boxSize,
+            type = BoxType.TEXT.toString()
         )
-        boxes.add(boxData)
+        boxes.add(box)
     }
 
-    fun createText(text: String) {
-        val fontMetrics = defaultBrush.value.fontMetrics
-        val textHeight = fontMetrics.descent - fontMetrics.ascent
-        createBox(
-            type = "TEXT",
+//    private fun createBox(
+//        type: String,
+//        data: String,
+//        width: Int,
+//        height: Int,
+//        latitude: Double,
+//        longitude: Double,
+//        time: Long
+//    ) {
+//        val screenCenterX = screenWidth / 2
+//        val screenCenterY = screenHeight / 2
+//
+//        val canvasX = (screenCenterX - offsetX.value) / scale.value
+//        val canvasY = (screenCenterY - offsetY.value) / scale.value
+//
+//        val boxData = BoxData(
+//            type = type,
+//            data = data,
+//            boxX = canvasX.toInt(),
+//            boxY = canvasY.toInt(),
+//            boxZ = 0,
+//            width = width,
+//            height = height,
+//            degree = 0,
+//            longitude = longitude,
+//            latitude = latitude,
+//            time = time
+//        )
+//        boxes.add(boxData)
+//    }
+
+    fun createText(text: String, x: Int, y: Int) {
+        val box = BoxData(
+            boxX = x,
+            boxY = y,
             data = text,
-            width = defaultBrush.value.measureText(text).toInt(),
-            height = textHeight.toInt(),
-            latitude = .0,
-            longitude = .0,
-            time = 0
+            type = BoxType.TEXT.toString()
         )
     }
-
     fun delete() {
         boxes.remove(selected.value)
         selected.value = null

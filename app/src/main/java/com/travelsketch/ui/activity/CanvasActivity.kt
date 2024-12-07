@@ -4,13 +4,12 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.ViewModelProvider
 import com.travelsketch.ui.composable.CanvasScreen
 import com.travelsketch.ui.composable.Editor
@@ -34,71 +33,43 @@ class CanvasActivity : ComponentActivity() {
 
         setContent {
             val showDialog = remember { mutableStateOf(false) }
-            val inputText = remember { mutableStateOf("") }
+            val isEditing = remember { mutableStateOf(false) }
+            val lastTapPosition = remember { mutableStateOf<Offset?>(null) }
 
             CanvasEditLayout(
                 canvas = {
-                    CanvasScreen(canvasViewModel)
+                    CanvasScreen(
+                        viewModel = canvasViewModel,
+                        onTapForBox = { canvasPos ->
+                            if (isEditing.value) {
+                                canvasViewModel.createBox(canvasPos.x, canvasPos.y)
+                                lastTapPosition.value = canvasPos
+                            }
+                        }
+                    )
                 },
                 button = {
                     Button(
                         onClick = {
+                            isEditing.value = !isEditing.value
                             canvasViewModel.toggleIsEditable()
                         }
                     ) {
-                        Text("Edit")
+                        Text(if (isEditing.value) "Done" else "Edit")
                     }
                 },
                 editor = {
-                    if (canvasViewModel.getEditable()) {
-                        Editor(canvasViewModel, showDialog)
+                    if (isEditing.value) {
+                        Editor(
+                            canvasViewModel = canvasViewModel,
+                            showDialog = showDialog
+                        )
                     }
                 },
                 statusBar = {
                     StatusBar(canvasViewModel)
                 }
             )
-
-            if (showDialog.value) {
-                InputTextDialog(
-                    onDismiss = { showDialog.value = false },
-                    onConfirm = { text ->
-                        showDialog.value = false
-                        inputText.value = text
-                        canvasViewModel.createText(text)
-                    }
-                )
-            }
         }
     }
-}
-
-@Composable
-fun InputTextDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    val textState = remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = { onDismiss() },
-        title = { Text("Enter Text") },
-        text = {
-            TextField(
-                value = textState.value,
-                onValueChange = { textState.value = it },
-                label = { Text("Text") }
-            )
-        },
-        confirmButton = {
-            Button(onClick = { onConfirm(textState.value) }) {
-                Text("OK")
-            }
-        },
-        dismissButton = {
-            Button(onClick = { onDismiss() }) {
-                Text("Cancel")
-            }
-        }
-    )
 }
