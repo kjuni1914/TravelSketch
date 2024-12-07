@@ -1,7 +1,10 @@
 package com.travelsketch.ui.composable
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Paint
+import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -30,6 +33,8 @@ import androidx.compose.ui.unit.toSize
 import com.travelsketch.data.model.BoxData
 import com.travelsketch.data.model.BoxType
 import com.travelsketch.viewmodel.CanvasViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class CanvasState(
     var scale: Float = 1f,
@@ -76,32 +81,90 @@ fun CanvasScreen(
         return canvasPos * canvasState.scale + canvasState.offset
     }
 
-    fun DrawScope.drawBox(box: BoxData) {
-        drawIntoCanvas { canvas ->
-            val screenPos = canvasToScreen(Offset(box.boxX.toFloat(), box.boxY.toFloat()))
-            val scaledWidth = box.width!! * canvasState.scale
-            val scaledHeight = box.height!! * canvasState.scale
+    val bitmaps = remember { mutableStateMapOf<String, android.graphics.Bitmap>() }
 
-            if (box.type == BoxType.TEXT.toString()) {
-                val scaledPaint = Paint(viewModel.defaultBrush.value).apply {
-                    textSize = viewModel.defaultBrush.value.textSize * canvasState.scale
-                    textAlign = Paint.Align.CENTER
+    viewModel.boxes.filter { it.type == BoxType.IMAGE.toString() }.forEach { box ->
+        box.data?.let { uri ->
+            if (!bitmaps.containsKey(uri)) {
+                LaunchedEffect(uri) {
+                    val bitmap = if (uri.startsWith("http")) {
+                        loadBitmapFromNetwork(uri)
+                    } else {
+                        withContext(Dispatchers.IO) {
+                            try {
+                                val parsedUri = Uri.parse(uri)
+                                context.contentResolver.openInputStream(parsedUri)?.use { inputStream ->
+                                    BitmapFactory.decodeStream(inputStream)
+                                }
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                    }
+
+                    bitmap?.let { bitmaps[uri] = it }
                 }
+            }
+        }
+    }
 
-                canvas.nativeCanvas.drawText(
-                    box.data,
-                    screenPos.x + scaledWidth / 2,
-                    screenPos.y + (scaledHeight / 2 - (scaledPaint.descent() + scaledPaint.ascent()) / 2),
-                    scaledPaint
-                )
-            } else {
-                canvas.nativeCanvas.drawRect(
-                    screenPos.x,
-                    screenPos.y - scaledHeight,
-                    screenPos.x + scaledWidth,
-                    screenPos.y,
-                    boxPaint
-                )
+    fun DrawScope.drawBox(box: BoxData) {
+        when (box.type) {
+            BoxType.TEXT.toString() -> {
+                drawIntoCanvas { canvas ->
+                    val screenPos = canvasToScreen(Offset(box.boxX.toFloat(), box.boxY.toFloat()))
+                    val scaledWidth = box.width!! * canvasState.scale
+                    val scaledHeight = box.height!! * canvasState.scale
+
+                    val scaledPaint = Paint(viewModel.defaultBrush.value).apply {
+                        textSize = viewModel.defaultBrush.value.textSize * canvasState.scale
+                        textAlign = Paint.Align.CENTER
+                    }
+
+                    canvas.nativeCanvas.drawText(
+                        box.data ?: "",
+                        screenPos.x + scaledWidth / 2,
+                        screenPos.y + (scaledHeight / 2 - (scaledPaint.descent() + scaledPaint.ascent()) / 2),
+                        scaledPaint
+                    )
+                }
+            }
+            BoxType.IMAGE.toString() -> {
+                val bitmap = bitmaps[box.data ?: ""]
+                bitmap?.let {
+                    val screenPos = canvasToScreen(Offset(box.boxX.toFloat(), box.boxY.toFloat()))
+                    val scaledWidth = box.width!! * canvasState.scale
+                    val scaledHeight = box.height!! * canvasState.scale
+                    val scaledBitmap = android.graphics.Bitmap.createScaledBitmap(
+                        it,
+                        scaledWidth.toInt(),
+                        scaledHeight.toInt(),
+                        true
+                    )
+                    drawIntoCanvas { canvas ->
+                        canvas.nativeCanvas.drawBitmap(
+                            scaledBitmap,
+                            screenPos.x,
+                            screenPos.y,
+                            null
+                        )
+                    }
+                }
+            }
+            else -> {
+                drawIntoCanvas { canvas ->
+                    val screenPos = canvasToScreen(Offset(box.boxX.toFloat(), box.boxY.toFloat()))
+                    val scaledWidth = box.width!! * canvasState.scale
+                    val scaledHeight = box.height!! * canvasState.scale
+
+                    canvas.nativeCanvas.drawRect(
+                        screenPos.x,
+                        screenPos.y - scaledHeight,
+                        screenPos.x + scaledWidth,
+                        screenPos.y,
+                        boxPaint
+                    )
+                }
             }
         }
     }
@@ -235,8 +298,8 @@ fun CanvasScreen(
                         if (!isDragging) {
                             val canvasPos = screenToCanvas(offset)
 
-                            if (viewModel.isTextPlacementMode.value) {
-                                viewModel.createTextBox(canvasPos.x, canvasPos.y)
+                            if (viewModel.isTextPlacementMode.value || viewModel.isImagePlacementMode.value) {
+                                viewModel.createBox(canvasPos.x, canvasPos.y)
                             } else {
                                 val hitBox = viewModel.boxes.findLast { box ->
                                     val boxPos = Offset(box.boxX.toFloat(), box.boxY.toFloat())
@@ -280,12 +343,15 @@ fun CanvasScreen(
                     boundaryPaint
                 )
             }
+            viewModel.boxes.forEach { box ->
+                drawBox(box)
+            }
 
-            viewModel.boxes.forEach { box -> drawBox(box) }
+            viewModel.selected.value?.let { selected ->
+                drawSelectionHandles(selected)
+            }
 
-            viewModel.selected.value?.let { selected -> drawSelectionHandles(selected) }
-
-            if (viewModel.isTextPlacementMode.value) {
+            if (viewModel.isTextPlacementMode.value || viewModel.isImagePlacementMode.value) {
                 drawRect(
                     color = Color.Gray.copy(alpha = 0.2f),
                     topLeft = Offset(canvasState.offset.x, canvasState.offset.y),
@@ -306,6 +372,20 @@ fun CanvasScreen(
                     .padding(16.dp),
                 color = Color.Black
             )
+        }
+    }
+}
+suspend fun loadBitmapFromNetwork(urlString: String): Bitmap? {
+    return withContext(Dispatchers.IO) {
+        try {
+            val url = java.net.URL(urlString)
+            val connection = url.openConnection()
+            connection.connect()
+            val inputStream = connection.getInputStream()
+            BitmapFactory.decodeStream(inputStream)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
     }
 }
