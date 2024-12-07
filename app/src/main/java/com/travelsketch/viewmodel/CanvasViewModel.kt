@@ -5,7 +5,6 @@ import android.graphics.Paint
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.content.Context
-import android.graphics.Bitmap
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -25,6 +24,7 @@ class CanvasViewModel : ViewModel() {
     val canvasHeight = 8000f
 
     var isLoading = mutableStateOf(false)
+    var isUploading = mutableStateOf(false)
     var canvasId = mutableStateOf("")
     var isEditable = mutableStateOf(true)
     var boxes = mutableStateListOf<BoxData>()
@@ -56,6 +56,11 @@ class CanvasViewModel : ViewModel() {
         this.context = context
     }
 
+    fun setScreenSize(width: Float, height: Float) {
+        screenWidth = width
+        screenHeight = height
+    }
+
     fun initializeCanvas(id: String) {
         canvasId.value = id
         viewAllBoxes(id)
@@ -74,14 +79,11 @@ class CanvasViewModel : ViewModel() {
         }
     }
 
-
-    fun setScreenSize(width: Float, height: Float) {
-        screenWidth = width
-        screenHeight = height
-    }
-
     fun toggleIsEditable() {
         isEditable.value = !isEditable.value
+        if (!isEditable.value) {
+            clearSelection()
+        }
     }
 
     fun select(box: BoxData) {
@@ -145,51 +147,56 @@ class CanvasViewModel : ViewModel() {
             val uri = Uri.parse(imageUri)
 
             try {
-                isLoading.value = true
+                isUploading.value = true
 
-                // 1. Calculate image dimensions
+                // 1. 먼저 임시 BoxData를 생성하고 화면에 표시
                 val (width, height) = calculateImageDimensions(context!!, uri)
                 val centeredX = canvasX - width / 2f
-                val centeredY = canvasY - height / 2f
+                val centeredY = canvasY + height / 2f  // Y 좌표 조정
 
-                // 2. Upload image to Firebase Storage
+                val tempBox = BoxData(
+                    boxX = centeredX.toInt(),
+                    boxY = centeredY.toInt(),
+                    width = width,
+                    height = height,
+                    type = BoxType.IMAGE.toString(),
+                    data = imageUri  // 임시로 로컬 URI 사용
+                )
+
+                boxes.add(tempBox)
+
+                // 2. 백그라운드에서 이미지 업로드
                 val timestamp = System.currentTimeMillis()
                 val imageFileName = "image_${timestamp}.jpg"
                 val storageRef = FirebaseStorage.getInstance().reference
                     .child("media/images/$imageFileName")
 
-                // Upload file
                 context?.contentResolver?.openInputStream(uri)?.use { inputStream ->
                     val uploadTask = storageRef.putStream(inputStream)
                     uploadTask.await()
 
-                    // Get download URL
                     val downloadUrl = storageRef.downloadUrl.await().toString()
 
-                    // 3. Create BoxData with the Firebase Storage URL
-                    val box = BoxData(
-                        boxX = centeredX.toInt(),
-                        boxY = centeredY.toInt(),
-                        width = width,
-                        height = height,
-                        type = BoxType.IMAGE.toString(),
-                        data = downloadUrl
-                    )
+                    // 3. 업로드 완료 후 BoxData 업데이트
+                    val finalBox = tempBox.copy(data = downloadUrl)
+                    val index = boxes.indexOf(tempBox)
+                    if (index != -1) {
+                        boxes[index] = finalBox
+                    }
 
-                    // 4. Save to Firebase Database
+                    // 4. Firebase Database에 저장
                     FirebaseClient.writeBoxData(
                         canvasId.value,
-                        "box_${box.boxX}_${box.boxY}",
-                        box
+                        "box_${finalBox.boxX}_${finalBox.boxY}",
+                        finalBox
                     )
-
-                    // 5. Add to local boxes list
-                    boxes.add(box)
                 }
             } catch (e: Exception) {
                 Log.e("CanvasViewModel", "Error creating image box", e)
+                // 에러 발생 시 임시 박스 제거
+                boxes.removeIf { it.data == imageUri }
             } finally {
-                isLoading.value = false
+                isUploading.value = false
                 isImagePlacementMode.value = false
                 imageToPlace.value = null
             }
@@ -232,7 +239,7 @@ class CanvasViewModel : ViewModel() {
         viewModelScope.launch {
             isLoading.value = true
             try {
-                boxes.forEachIndexed { index, box ->
+                boxes.forEach { box ->
                     FirebaseClient.writeBoxData(
                         canvasId.value,
                         "box_${box.boxX}_${box.boxY}",
