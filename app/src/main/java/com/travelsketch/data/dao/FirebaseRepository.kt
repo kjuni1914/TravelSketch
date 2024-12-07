@@ -1,13 +1,16 @@
 package com.travelsketch.data.dao
 
+import android.net.Uri
 import android.util.Log
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.storage.FirebaseStorage
 import com.travelsketch.data.model.MapData
 import kotlinx.coroutines.tasks.await
 
 class FirebaseRepository {
     private val database = FirebaseDatabase.getInstance().reference
+    private val storage = FirebaseStorage.getInstance()
 
     // 특정 Canvas 데이터 읽기
     suspend fun readMapCanvasData(canvasId: String): MapData? {
@@ -44,7 +47,7 @@ class FirebaseRepository {
         }
     }
 
-    /// 사용자의 canvas_ids 읽기
+    // 사용자의 canvas_ids 읽기
     suspend fun readUserCanvasIds(userId: String): List<String> {
         return try {
             val snapshot = database.child("users").child(userId).child("canvas_ids").get().await()
@@ -198,6 +201,27 @@ class FirebaseRepository {
     }
 
 
+    suspend fun uploadFile(fileUri: Uri, path: String): String? {
+        return try {
+            val storageRef = storage.reference.child(path)
+            storageRef.putFile(fileUri).await()
+            storageRef.downloadUrl.await().toString() // 업로드 후 다운로드 URL 반환
+        } catch (e: Exception) {
+            Log.e("FirebaseRepository", "File upload failed", e)
+            null
+        }
+    }
+
+    suspend fun deleteFile(path: String): Boolean {
+        return try {
+            val storageRef = storage.reference.child(path)
+            storageRef.delete().await()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
 
     // Firebase Snapshot을 CanvasData로 변환
     private fun parseMapCanvasData(snapshot: DataSnapshot, canvasId: String): MapData {
@@ -207,10 +231,7 @@ class FirebaseRepository {
         val mapCanvasTitle = snapshot.child("title").getValue(String::class.java) ?: ""
         val isVisible = snapshot.child("is_visible").getValue(Boolean::class.java) ?: false
         val range = snapshot.child("range").getValue(Double::class.java) ?: 0.0
-        Log.d(
-            "FirebaseRepository",
-            "Parsed data - canvasId: $canvasId, previewBoxId: $previewBoxId, avgLatitude: $avgGpsLatitude, avgLongitude: $avgGpsLongitude, title: $mapCanvasTitle, is_visible : ${isVisible}"
-        )
+
         return MapData(
             canvasId = canvasId, // canvasId 추가
             avg_gps_latitude = avgGpsLatitude,

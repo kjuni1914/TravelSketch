@@ -97,6 +97,7 @@ dependencies {
 //    implementation ("com.google.android.exoplayer:exoplayer:2.19.0") // media video 재생
     implementation(libs.play.services.location) // 최신 버전 확인 후 업데이트
     implementation ("com.google.firebase:firebase-messaging:23.1.2") // fcm push 알림
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.0") // view model lifecycle
 
 
     testImplementation(libs.junit)

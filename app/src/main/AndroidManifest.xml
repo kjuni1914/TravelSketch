@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <application
         android:name=".GlobalApplication"
@@ -45,16 +48,26 @@
 <!--                    android:scheme="kakao10417161ccb1c6807969be9947764e7f" />-->
 <!--            </intent-filter>-->
 <!--        </activity>-->
-        <activity
-            android:name=".ui.activity.LoginActivity"
-            android:exported="true"
-            android:theme="@android:style/Theme.Material.Light.NoActionBar"
-            android:label="@string/app_name">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+<!--        <activity-->
+<!--            android:name=".ui.activity.FileUploadActivity"-->
+<!--            android:exported="true"-->
+<!--            android:theme="@android:style/Theme.Material.Light.NoActionBar"-->
+<!--            android:label="@string/app_name">-->
+<!--            <intent-filter>-->
+<!--                <action android:name="android.intent.action.MAIN" />-->
+<!--                <category android:name="android.intent.category.LAUNCHER" />-->
+<!--            </intent-filter>-->
+<!--        </activity>-->
+<!--        <activity-->
+<!--            android:name=".ui.activity.LoginActivity"-->
+<!--            android:exported="true"-->
+<!--            android:theme="@android:style/Theme.Material.Light.NoActionBar"-->
+<!--            android:label="@string/app_name">-->
+<!--            <intent-filter>-->
+<!--                <action android:name="android.intent.action.MAIN" />-->
+<!--                <category android:name="android.intent.category.LAUNCHER" />-->
+<!--            </intent-filter>-->
+<!--        </activity>-->
         <activity
             android:name=".ui.activity.CanvasActivity"
             android:exported="true"
