@@ -4,9 +4,11 @@ import android.net.Uri
 import android.util.Log
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.travelsketch.data.model.MapData
 import kotlinx.coroutines.tasks.await
+import java.io.File
 
 class FirebaseRepository {
     private val database = FirebaseDatabase.getInstance().reference
@@ -242,4 +244,33 @@ class FirebaseRepository {
             title = mapCanvasTitle
         )
     }
+    fun uploadPhotoToFirebase(filePath: String, onSuccess: (String) -> Unit) {
+        val file = Uri.fromFile(File(filePath))
+        val storageRef = FirebaseStorage.getInstance().reference.child("images/${file.lastPathSegment}")
+
+        storageRef.putFile(file)
+            .addOnSuccessListener { onSuccess(storageRef.path) }
+            .addOnFailureListener { Log.e("Firebase Storage", "Upload failed: ${it.message}") }
+    }
+    fun saveMetadataToFirestore(
+        latitude: Double?,
+        longitude: Double?,
+        timestamp: String?,
+        storagePath: String,
+        onComplete: () -> Unit
+    ) {
+        val metadata = hashMapOf(
+            "latitude" to latitude,
+            "longitude" to longitude,
+            "timestamp" to timestamp,
+            "imagePath" to storagePath
+        )
+
+        FirebaseFirestore.getInstance()
+            .collection("imageMetadata")
+            .add(metadata)
+            .addOnSuccessListener { onComplete() }
+            .addOnFailureListener { Log.e("Firestore", "Failed to save metadata: ${it.message}") }
+    }
+
 }

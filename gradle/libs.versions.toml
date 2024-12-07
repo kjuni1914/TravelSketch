@@ -16,6 +16,7 @@ playServicesLocation = "21.0.1" # 원하는 버전으로 설정
 android-maps-utils = "3.4.0"
 android-maps-compose = "2.13.0"
 firebaseAuth = "23.1.0"
+firebaseFirestoreKtx = "25.1.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -39,6 +40,7 @@ google-maps-utils = { module = "com.google.maps.android:android-maps-utils", ver
 google-maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "android-maps-compose" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx", version.ref = "firebaseFirestoreKtx" }
 
 
 [plugins]
