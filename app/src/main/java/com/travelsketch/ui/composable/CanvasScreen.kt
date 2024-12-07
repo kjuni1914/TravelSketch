@@ -1,36 +1,39 @@
 package com.travelsketch.ui.composable
 
+import android.annotation.SuppressLint
+import android.icu.text.Transliterator
+import android.util.Log
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
-import com.travelsketch.data.model.BoxType
 import com.travelsketch.viewmodel.CanvasViewModel
+import kotlinx.coroutines.coroutineScope
+import kotlin.math.pow
 
 
+@SuppressLint("ReturnFromAwaitPointerEventScope")
 @Composable
 fun CanvasScreen(canvasViewModel: CanvasViewModel) {
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val focusRequester = FocusRequester()
 
-    val focus by canvasViewModel.focus
+    var size by canvasViewModel.size
     val scale by canvasViewModel.scale
     val offsetX by canvasViewModel.offsetX
     val offsetY by canvasViewModel.offsetY
@@ -39,15 +42,15 @@ fun CanvasScreen(canvasViewModel: CanvasViewModel) {
     val selected = canvasViewModel.selected
     val defaultBrush = canvasViewModel.defaultBrush
     val selectBrush = canvasViewModel.selectBrush
-    var editingText = canvasViewModel.editingText
 
     Canvas(
         modifier = Modifier
             .fillMaxSize()
             .onGloballyPositioned { coordinates ->
-                val size = coordinates.size.toSize()
-                val canvasWidth = size.width
-                val canvasHeight = size.height
+                val tmp = coordinates.size.toSize()
+                if (size == null) size = tmp
+                val canvasWidth = size!!.width
+                val canvasHeight = size!!.height
 
                 canvasViewModel.setCenter(
                     minOf(maxOf(-offsetX + canvasWidth / 2, 0f), canvasWidth),
@@ -61,12 +64,6 @@ fun CanvasScreen(canvasViewModel: CanvasViewModel) {
                 translationY = offsetY
             )
             .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    canvasViewModel.updateScale(zoom)
-                    canvasViewModel.updateOffset(pan.x, pan.y)
-                }
-            }
-            .pointerInput(Unit) {
                 detectTapGestures { offset ->
                     val tmp = boxes.findLast { box ->
                         val xRange = box.boxX.toFloat()..
@@ -76,11 +73,65 @@ fun CanvasScreen(canvasViewModel: CanvasViewModel) {
                         offset.x in xRange && offset.y in yRange
                     }
 
-                    if(tmp == null) {
+                    if (tmp == null) {
                         canvasViewModel.unselect()
                     } else {
-                        if (!tmp.equals(selected)) canvasViewModel.select(tmp)
-                        else canvasViewModel.defaultAction()
+                        if (tmp != selected.value) {
+                            canvasViewModel.select(tmp)
+                        } else {
+                            canvasViewModel.defaultAction()
+                        }
+                    }
+                }
+            }
+            .pointerInput(Unit) {
+                coroutineScope {
+                    while (true) {
+                        awaitPointerEventScope {
+                            var initDist: Float? = null
+
+                            val pointerId = awaitFirstDown().id
+                            val event = awaitPointerEvent()
+
+                            if (event.changes.size >= 2) {
+                                val midPnt = (event.changes[0].position +
+                                        event.changes[1].position).div(2f)
+
+                                drag(pointerId) { change ->
+                                    if (initDist == null) {
+                                        initDist = (midPnt - event.changes[0].position).getDistance()
+                                    } else {
+                                        val scale = (change.position - midPnt).getDistance() / initDist!!
+                                        canvasViewModel.updateScale(scale)
+                                    }
+                                }
+
+                            } else {
+                                drag(pointerId) { change ->
+
+                                    val tmp = boxes.findLast { box ->
+                                        val xRange = box.boxX.toFloat()..
+                                                (box.boxX + box.width!!).toFloat()
+                                        val yRange = (box.boxY - box.height!!).toFloat()..
+                                                box.boxY.toFloat()
+                                        change.position.x in xRange && change.position.y in yRange
+                                    }
+
+                                    if (tmp != null) {
+                                        canvasViewModel.select(tmp)
+                                        canvasViewModel.updateBoxPosition(
+                                            change.positionChange().x.toInt(),
+                                            change.positionChange().y.toInt()
+                                        )
+                                    } else {
+                                        canvasViewModel.updateOffset(
+                                            change.positionChange().x,
+                                            change.positionChange().y
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -117,5 +168,4 @@ fun CanvasScreen(canvasViewModel: CanvasViewModel) {
             }
         }
     )
-
 }

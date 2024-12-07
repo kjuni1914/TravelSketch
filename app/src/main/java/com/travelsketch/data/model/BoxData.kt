@@ -21,6 +21,22 @@ data class BoxData(
         return Pair((this.boxX + this.width!!/2).toFloat(), (this.boxY - this.height!!/2).toFloat())
     }
 
+    fun copy(boxData: BoxData, boxX: Int, boxY: Int): BoxData {
+        return BoxData(
+            boxX = boxX,
+            boxY = boxY,
+            boxZ = boxData.boxZ,
+            data = boxData.data,
+            degree = boxData.degree,
+            height = boxData.height,
+            latitude = boxData.latitude,
+            longitude = boxData.longitude,
+            time = boxData.time,
+            width = boxData.width,
+            type = boxData.type
+        )
+    }
+
     override fun toString(): String {
         return "Box(boxX=$boxX, boxY=$boxY, boxZ=$boxZ, data='$data', degree=$degree, height=$height, latitude=$latitude, longitude=$longitude, time=$time, width=$width, type='$type')"
     }

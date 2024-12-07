@@ -46,10 +46,9 @@ fun CanvasEditLayout(
         // Status bar is placed at the bottom
         Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
+                .align(Alignment.TopStart)
                 .wrapContentSize()
-                .background(Color.Red)
-                .height(40.dp)
+                .background(Color.Transparent)
         ) {
             statusBar()
         }

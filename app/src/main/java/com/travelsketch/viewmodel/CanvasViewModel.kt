@@ -5,6 +5,7 @@ import android.graphics.Paint
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,21 +15,18 @@ import kotlinx.coroutines.launch
 
 class CanvasViewModel : ViewModel() {
     var canvasId = "canvas_1"
-
+    var size = mutableStateOf<Size?>(null)
     var scale = mutableFloatStateOf(1f)
     var offsetX = mutableFloatStateOf(0f)
     var offsetY = mutableFloatStateOf(0f)
     var centerX = mutableFloatStateOf(0f)
     var centerY = mutableFloatStateOf(0f)
 
-    var focus = mutableStateOf(false)
     var isEditable = mutableStateOf(true)
     var boxes = mutableStateListOf<BoxData>()
     var selected = mutableStateOf<BoxData?>(null)
     var log = mutableStateOf("")
 
-    // State for editing text
-    var editingText = mutableStateOf(TextFieldValue(""))
 
     var defaultBrush = mutableStateOf( Paint().apply {
         color = Color.BLACK
@@ -154,7 +152,26 @@ class CanvasViewModel : ViewModel() {
     }
 
     fun defaultAction() {
-        editingText.value = TextFieldValue(selected.value!!.data)
+//        editingText.value = TextFieldValue(selected.value!!.data)
         delete()
+    }
+
+    fun updateBoxPosition(dx: Int, dy: Int) {
+        val index = boxes.indexOf(selected.value)
+        if (selected != null) {
+            val x = selected.value?.boxX!!
+            val y = selected.value?.boxY!!
+            val width = selected.value?.width!!
+            val height = selected.value?.height!!
+
+            val updatedBox = selected.value?.copy(
+                boxX = minOf(maxOf(x + dx, 0), size.value?.width?.minus(width)!!.toInt()),
+                boxY = minOf(maxOf(y + dy, 0), size.value?.height?.minus(height)!!.toInt())
+            )
+            if (updatedBox != null) {
+                boxes[index] = updatedBox
+                selected.value = updatedBox
+            }
+        }
     }
 }
