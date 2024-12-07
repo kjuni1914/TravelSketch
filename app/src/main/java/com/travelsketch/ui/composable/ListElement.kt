@@ -75,7 +75,7 @@ fun ListElement(
                     .absoluteOffset(x = 300.dp, y = 5.dp) // 상단 우측 고정
                     .size(40.dp) // 크기 고정
                     .clickable {
-                        onNavigateToCanvas(canvasId)
+                            onNavigateToCanvas(canvasId)
                     }
             )
 

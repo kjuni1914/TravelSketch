@@ -1,3 +1,4 @@
+
 package com.travelsketch.ui.composable
 
 import androidx.compose.foundation.Image
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +24,7 @@ import com.travelsketch.viewmodel.CanvasViewModel
 @Composable
 fun Editor(
     canvasViewModel: CanvasViewModel,
+    showDialog: MutableState<Boolean>
 ) {
     val selected by canvasViewModel.selected
 
@@ -32,19 +35,6 @@ fun Editor(
                 R.drawable.delete_btn
             )
         }
-
-//        BoxType.IMAGE.toString() -> {
-//
-//        }
-//
-//        BoxType.VIDEO.toString() -> {
-//
-//        }
-//
-//        BoxType.RECORD.toString() -> {
-//
-//        }
-
         else -> mutableListOf(
             R.drawable.text_btn,
             R.drawable.img_btn,
@@ -55,9 +45,10 @@ fun Editor(
 
     btnLst.add(R.drawable.save_btn)
 
-    Row(modifier = Modifier
-        .padding(1.dp)
-        .border(1.dp, Color.Black),
+    Row(
+        modifier = Modifier
+            .padding(1.dp)
+            .border(1.dp, Color.Black),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -69,7 +60,7 @@ fun Editor(
                     .padding(2.dp)
                     .clickable {
                         when (res) {
-                            R.drawable.text_btn -> canvasViewModel.createText()
+                            R.drawable.text_btn -> showDialog.value = true
                             R.drawable.save_btn -> canvasViewModel.saveAll()
                             R.drawable.delete_btn -> canvasViewModel.delete()
                         }

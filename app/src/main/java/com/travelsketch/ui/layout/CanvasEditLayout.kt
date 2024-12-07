@@ -18,14 +18,11 @@ fun CanvasEditLayout(
     button: @Composable () -> Unit,
     statusBar: @Composable () -> Unit
 ) {
-
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Canvas is placed at the center and fills the available space
         canvas()
 
-        // Button is positioned at the top-right corner
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -34,7 +31,6 @@ fun CanvasEditLayout(
             button()
         }
 
-        // Editor is positioned at the bottom center
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -43,7 +39,6 @@ fun CanvasEditLayout(
             editor()
         }
 
-        // Status bar is placed at the bottom
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
