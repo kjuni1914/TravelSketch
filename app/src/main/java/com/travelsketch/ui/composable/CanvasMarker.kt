@@ -7,8 +7,10 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import coil.ImageLoader
@@ -35,7 +37,7 @@ fun CanvasMarker(
     val context = LocalContext.current
 
     // 줌 레벨 가져오기
-    val zoom = cameraPositionState.position.zoom
+    val zoom by remember { derivedStateOf { cameraPositionState.position.zoom } }
 
     // 줌 레벨에 따라 크기 계산
     val (width, height) = calculateMarkerSize(zoom)
@@ -45,28 +47,18 @@ fun CanvasMarker(
         value = when {
             imageUrl != null -> {
                 try {
-                    // Firebase Storage 이미지 불러오기
-                    getScaledBitmapDescriptorWithBackgroundFromUrl(context, imageUrl, width, height,borderColor.toArgb() // Color to Int
-                    )
+                    getScaledBitmapDescriptorWithBackgroundFromUrl(context, imageUrl, width, height,borderColor.toArgb())
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    // Firebase에서 실패하면 기본 이미지 사용
                     getScaledBitmapDescriptorWithBackground(context, R.drawable.paris, width, height, borderColor.toArgb()).also {
-                        println("Fallback to local image R.drawable.paris")
                     }
                 }
             }
             imageResId != null -> {
-                // 로컬 이미지 사용
                 getScaledBitmapDescriptorWithBackground(context, imageResId, width, height, borderColor.toArgb()).also {
-                    println("Using local image resource: R.drawable.paris")
                 }
             }
-            else -> {
-                // 기본값으로 null 반환
-                println("No image resource or URL provided")
-                null
-            }
+            else -> null
         }
     }
 
@@ -91,7 +83,6 @@ fun calculateMarkerSize(zoom: Float): Pair<Int, Int> {
     val size = ((maxSize - minSize) * ((normalizedZoom - 2f) / (21f - 2f))).toInt() + minSize
     return Pair(size, size) // 가로, 세로 크기 반환
 }
-
 
 fun getScaledBitmapDescriptorWithBackground(context: Context, drawableRes: Int, width: Int, height: Int, borderColor: Int
 ): BitmapDescriptor {

@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,14 +30,15 @@ fun ListElement(
     isVisible: Boolean, // 현재 is_visible 값
     isCurrentUserCanvas: Boolean, // 현재 사용자의 캔버스인지 여부
     onToggleVisibility: (String, Boolean) -> Unit, // visibility 변경 콜백 추가
-//    onClick: (String) -> Unit // canvasId를 전달하는 콜백
     onNavigateToCanvas: (String) -> Unit
 ) {
     var isVisibleState by remember { mutableStateOf(isVisible) }
+    val TitleFontFamily = FontFamily(
+        Font(R.font.typo_crayonm) // 파일 이름은 확장자 없이 사용
+    )
 
     Box(modifier = Modifier
         .fillMaxSize()
-//        .clickable { onClick(canvasId) } // 클릭 시 canvasId 전달
     ) {
         // 카드 배경
         Card(
@@ -44,7 +47,8 @@ fun ListElement(
                 .fillMaxWidth()
                 .height(240.dp) // 고정 높이 설정
                 .padding(10.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFECECEC)) // 약간 더 진한 배경색
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF9C4)), // 약간 더 진한 배경색
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp) // 그림자 효과 추가
         ) {}
 
         // 텍스트와 버튼 배치
@@ -54,7 +58,7 @@ fun ListElement(
                 modifier = Modifier
                     .absoluteOffset(x = 20.dp, y = 5.dp) // 상단 왼쪽 고정
                     .background(color = Color.White, shape = RoundedCornerShape(5.dp))
-                    .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(5.dp))
+                    .border(width = 0.5.dp, color = Color.Black, shape = RoundedCornerShape(5.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp) // 텍스트 주변 패딩
             ) {
                 Text(
@@ -62,6 +66,7 @@ fun ListElement(
                     style = TextStyle(
                         fontSize = 20.sp,
                         color = Color.Black,
+                        fontFamily = TitleFontFamily,
                         fontWeight = FontWeight.Bold // 텍스트 굵게 설정
                     )
                 )
@@ -87,7 +92,7 @@ fun ListElement(
                     .absoluteOffset(x = 345.dp, y = 5.dp) // Edit 버튼 오른쪽 고정
                     .size(40.dp) // 크기 고정
                     .border(
-                        width = if (isVisibleState) 2.dp else 0.dp, // is_visible이 true면 테두리 추가
+                        width = if (isVisibleState) 2.dp else 0.dp,
                         color = if (isVisibleState) Color.Red else Color.Transparent,
                     )
                     .clickable {
