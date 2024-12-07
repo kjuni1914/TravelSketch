@@ -57,8 +57,12 @@ class CanvasViewModel(
                     if (box.type == "TEXT") {
                         if (box.width == 0)
                             box.width = defaultBrush.value.measureText(box.data).toInt()
-                        if (box.height == 0)
-                            box.height = defaultBrush.value.measureText(box.data).toInt()
+                        if (box.height == 0) {
+                            // 텍스트 높이 계산
+                            val fontMetrics = defaultBrush.value.fontMetrics
+                            val textHeight = (fontMetrics.descent - fontMetrics.ascent).toInt()
+                            box.height = textHeight
+                        }
                     }
                     boxes.add(box)
                 }
@@ -131,7 +135,9 @@ class CanvasViewModel(
         val text = textToPlace.value
         val paint = defaultBrush.value
         val textWidth = paint.measureText(text).toInt()
-        val textHeight = (-paint.ascent() + paint.descent()).toInt()
+        // 텍스트 높이 계산
+        val fontMetrics = paint.fontMetrics
+        val textHeight = (fontMetrics.descent - fontMetrics.ascent).toInt()
 
         val box = BoxData(
             boxX = (canvasX - textWidth/2).toInt(),
@@ -149,10 +155,5 @@ class CanvasViewModel(
     fun delete() {
         boxes.remove(selected.value)
         selected.value = null
-    }
-
-    fun defaultAction() {
-        editingText.value = TextFieldValue(selected.value!!.data)
-        delete()
     }
 }
