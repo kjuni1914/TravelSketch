@@ -23,8 +23,10 @@ class CanvasViewModel : ViewModel() {
     var centerY = mutableFloatStateOf(0f)
 
     var isEditable = mutableStateOf(true)
+    var isChanging = mutableStateOf(false)
     var boxes = mutableStateListOf<BoxData>()
     var selected = mutableStateOf<BoxData?>(null)
+    var textField = mutableStateOf(TextFieldValue(""))
     var log = mutableStateOf("")
 
 
@@ -152,8 +154,8 @@ class CanvasViewModel : ViewModel() {
     }
 
     fun defaultAction() {
-//        editingText.value = TextFieldValue(selected.value!!.data)
-        delete()
+        isChanging.value = true
+        textField.value = TextFieldValue(selected.value!!.data)
     }
 
     fun updateBoxPosition(dx: Int, dy: Int) {

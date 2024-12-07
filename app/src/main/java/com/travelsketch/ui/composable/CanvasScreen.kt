@@ -8,6 +8,10 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -22,30 +26,39 @@ import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextLayoutInput
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.zIndex
 import com.travelsketch.viewmodel.CanvasViewModel
 import kotlinx.coroutines.coroutineScope
-import kotlin.math.pow
 
 
 @SuppressLint("ReturnFromAwaitPointerEventScope")
 @Composable
 fun CanvasScreen(canvasViewModel: CanvasViewModel) {
-
     var size by canvasViewModel.size
     val scale by canvasViewModel.scale
     val offsetX by canvasViewModel.offsetX
     val offsetY by canvasViewModel.offsetY
+    var isChanging by canvasViewModel.isChanging
 
     val boxes = canvasViewModel.boxes
     val selected = canvasViewModel.selected
     val defaultBrush = canvasViewModel.defaultBrush
     val selectBrush = canvasViewModel.selectBrush
+    val textField = canvasViewModel.textField
 
     Canvas(
         modifier = Modifier
             .fillMaxSize()
+            .zIndex(0f)
             .onGloballyPositioned { coordinates ->
                 val tmp = coordinates.size.toSize()
                 if (size == null) size = tmp
@@ -74,6 +87,12 @@ fun CanvasScreen(canvasViewModel: CanvasViewModel) {
                     }
 
                     if (tmp == null) {
+                        if (isChanging) {
+                            val txt = textField.value.text
+                            selected.value!!.data = textField.value.text
+                            isChanging = false
+                        }
+
                         canvasViewModel.unselect()
                     } else {
                         if (tmp != selected.value) {
@@ -136,7 +155,7 @@ fun CanvasScreen(canvasViewModel: CanvasViewModel) {
                 }
             },
         onDraw = {
-            drawRect(color = Color.Yellow)
+            drawRect(color = Color.Transparent)
             drawIntoCanvas { canvas ->
                 if (selected != null) {
                     selected.value?.let {
@@ -153,19 +172,50 @@ fun CanvasScreen(canvasViewModel: CanvasViewModel) {
                     }
                 }
                 boxes.forEach { box ->
-                    val x = box.boxX.toFloat()
-                    val y = box.boxY.toFloat()
+                    if (!(isChanging && box == selected.value)) {
+                        val x = box.boxX.toFloat()
+                        val y = box.boxY.toFloat()
 
-                    when (box.type) {
-                        "TEXT" -> {
-                            canvas.nativeCanvas.drawText(
-                                box.data,
-                                x, y, defaultBrush.value
-                            )
+                        when (box.type) {
+                            "TEXT" -> {
+                                canvas.nativeCanvas.drawText(
+                                    box.data, x, y, defaultBrush.value
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     )
+    if (isChanging) {
+        val context = LocalContext.current
+        val scaledDensity = context.resources.displayMetrics.scaledDensity
+        val density = context.resources.displayMetrics.density
+
+        val fontMetrics = defaultBrush.value.fontMetrics
+        val height = (fontMetrics.top - fontMetrics.bottom)/density
+
+        val offsetXInDp = (offsetX * scale / density).dp
+        val offsetYInDp = (offsetY * scale / density).dp
+        val boxXInDp = selected.value?.boxX?.div(density)!!.dp
+        val boxYInDp = selected.value?.boxY?.div(density)!!.dp
+
+        BasicTextField(
+            value = textField.value,
+            onValueChange = { newText ->
+                textField.value = newText
+            },
+            textStyle = TextStyle(
+                color = Color.Black,
+                fontSize = (70f / scaledDensity).sp
+            ),
+            modifier = Modifier
+                .offset(
+                    x = offsetXInDp + boxXInDp,
+                    y = offsetYInDp + boxYInDp + height.dp
+                )
+                .zIndex(1f)
+        )
+    }
 }
