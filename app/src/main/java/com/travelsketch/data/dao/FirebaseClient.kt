@@ -103,11 +103,18 @@ object FirebaseClient: DatabaseClient {
         boxData: BoxData
     ): Boolean {
         return try {
-            // boxData의 자동 생성된 id를 사용
-            databaseRef.child("canvas").child(canvasId).child(boxData.id).setValue(boxData).await()
+            Log.d("FirebaseClient", "Writing box data - Canvas: $canvasId, Box: $boxId")
+            Log.d("FirebaseClient", "Box data: $boxData")
+
+            val reference = databaseRef.child("canvas").child(canvasId).child(boxData.id)
+            Log.d("FirebaseClient", "Writing to path: ${reference}")  // toString() 없이도 작동합니다
+
+            reference.setValue(boxData).await()
+            Log.d("FirebaseClient", "Successfully wrote box data")
             true
         } catch (e: Exception) {
-            Log.d("ITM", "DAO Error: $e")
+            Log.e("FirebaseClient", "Error writing box data", e)
+            e.printStackTrace()
             false
         }
     }
@@ -132,23 +139,40 @@ object FirebaseClient: DatabaseClient {
 
     override suspend fun readAllBoxData(canvasId: String): List<BoxData>? {
         return try {
-            val snapshot = databaseRef.child("canvas").child(canvasId).get().await()
+            Log.d("FirebaseClient", "Attempting to read boxes for canvas: $canvasId")
+            val reference = databaseRef.child("canvas").child(canvasId)
+            Log.d("FirebaseClient", "Database reference: $reference")
+
+            val snapshot = reference.get().await()
+            Log.d("FirebaseClient", "Snapshot exists: ${snapshot.exists()}")
+            Log.d("FirebaseClient", "Snapshot children count: ${snapshot.childrenCount}")
+
             val boxDataList = mutableListOf<BoxData>()
 
             if (snapshot.exists()) {
                 snapshot.children.forEach { child ->
-                    val boxData = child.getValue(BoxData::class.java)
-                    if (boxData != null) {
-                        // 저장된 key를 ID로 설정
-                        boxData.id = child.key ?: boxData.id
-                        boxDataList.add(boxData)
+                    Log.d("FirebaseClient", "Processing child key: ${child.key}")
+                    // title 필드는 무시하고 BoxData만 처리
+                    if (child.key != "title") {
+                        try {
+                            val boxData = child.getValue(BoxData::class.java)
+                            if (boxData != null) {
+                                boxData.id = child.key ?: boxData.id
+                                boxDataList.add(boxData)
+                                Log.d("FirebaseClient", "Added box: $boxData")
+                            }
+                        } catch (e: Exception) {
+                            Log.e("FirebaseClient", "Error parsing box data for key: ${child.key}", e)
+                        }
                     }
                 }
             }
 
+            Log.d("FirebaseClient", "Finished reading. Total boxes: ${boxDataList.size}")
             boxDataList
         } catch (e: Exception) {
-            Log.d("ITM", "DAO Error: $e")
+            Log.e("FirebaseClient", "Error reading box data", e)
+            e.printStackTrace()
             null
         }
     }
