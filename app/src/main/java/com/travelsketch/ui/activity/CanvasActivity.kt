@@ -21,6 +21,7 @@ import com.travelsketch.ui.composable.Editor
 import com.travelsketch.ui.composable.ImageSourceDialog
 import com.travelsketch.ui.composable.StatusBar
 import com.travelsketch.ui.composable.TextInputDialog
+import com.travelsketch.ui.composable.VideoSourceDialog
 import com.travelsketch.ui.layout.CanvasEditLayout
 import com.travelsketch.viewmodel.CanvasViewModel
 import java.io.File
@@ -30,6 +31,10 @@ class CanvasActivity : ComponentActivity() {
     private lateinit var cameraLauncher: ActivityResultLauncher<Uri>
     private lateinit var galleryLauncher: ActivityResultLauncher<String>
     private var tempImageUri: Uri? = null
+
+    private lateinit var videoLauncher: ActivityResultLauncher<String>
+    private lateinit var videoCameraLauncher: ActivityResultLauncher<Uri>
+    private var tempVideoUri: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,9 +65,23 @@ class CanvasActivity : ComponentActivity() {
             }
         }
 
+        videoLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            uri?.let {
+                canvasViewModel.startVideoPlacement(it.toString())
+            }
+        }
+
+        videoCameraLauncher = registerForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
+            if (success) {
+                tempVideoUri?.let { uri ->
+                    canvasViewModel.startVideoPlacement(uri.toString())
+                }
+            }
+        }
         setContent {
             val showDialog = remember { mutableStateOf(false) }
             val showImageSourceDialog = remember { mutableStateOf(false) }
+            val showVideoSourceDialog = remember { mutableStateOf(false) }
             val isEditing = remember { mutableStateOf(false) }
 
             if (showDialog.value) {
@@ -80,6 +99,7 @@ class CanvasActivity : ComponentActivity() {
                     onDismiss = { showImageSourceDialog.value = false },
                     onSelectCamera = {
                         val imageFile = File.createTempFile("temp_image", ".jpg", cacheDir)
+
                         tempImageUri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", imageFile)
                         tempImageUri?.let { cameraLauncher.launch(it) }
                         showImageSourceDialog.value = false
@@ -87,6 +107,24 @@ class CanvasActivity : ComponentActivity() {
                     onSelectGallery = {
                         galleryLauncher.launch("image/*")
                         showImageSourceDialog.value = false
+
+                    }
+                )
+            }
+
+            if (showVideoSourceDialog.value) {
+                VideoSourceDialog(
+                    onDismiss = { showVideoSourceDialog.value = false },
+                    onSelectCamera = {
+                        val videoFile = File.createTempFile("temp_video", ".mp4", cacheDir)
+
+                        tempVideoUri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", videoFile)
+                        tempVideoUri?.let { videoCameraLauncher.launch(it) }
+                        showVideoSourceDialog.value = false
+                    },
+                    onSelectGallery = {
+                        videoLauncher.launch("video/*")
+                        showVideoSourceDialog.value = false
                     }
                 )
             }
@@ -117,7 +155,8 @@ class CanvasActivity : ComponentActivity() {
                         Editor(
                             canvasViewModel = canvasViewModel,
                             showDialog = showDialog,
-                            showImageSourceDialog = showImageSourceDialog
+                            showImageSourceDialog = showImageSourceDialog,
+                            showVideoSourceDialog = showVideoSourceDialog,
                         )
                     }
                 },

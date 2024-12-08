@@ -189,7 +189,7 @@ fun MapViewScreen(
                 if (imageUrl != null) {
                     CanvasMarker(
                         position = LatLng(canvas.avg_gps_latitude, canvas.avg_gps_longitude),
-                        imageUrl = imageUrl, // 사용자 Firebase Storage 이미지 URL 전달
+                        imageUrl = imageUrl,
                         imageResId = R.drawable.paris, // paris.png를 사용자 마커 아이콘으로 설정
                         canvasId = canvas.toString(), // canvasId 전달
                         cameraPositionState = cameraPositionState,
@@ -216,7 +216,7 @@ fun MapViewScreen(
                 if (imageUrl != null) {
                     CanvasMarker(
                         position = LatLng(canvas.avg_gps_latitude, canvas.avg_gps_longitude),
-                        imageUrl = imageUrl, // 친구 Firebase Storage 이미지 URL 전달
+                        imageUrl = imageUrl,
                         canvasId = canvas.toString(),
                         imageResId = R.drawable.paris, // 친구 마커 아이콘 설정
                         cameraPositionState = cameraPositionState,

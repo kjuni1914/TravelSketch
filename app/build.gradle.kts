@@ -58,6 +58,8 @@ android {
 dependencies {
     implementation("androidx.room:room-runtime:2.6.1")
     implementation(libs.firebase.firestore.ktx)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
     ksp("androidx.room:room-compiler:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     implementation("androidx.compose.material:material-icons-extended:1.5.1") // 준희 // 비밀번호 보이기|가리기 버튼

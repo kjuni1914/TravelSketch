@@ -22,7 +22,8 @@ import com.travelsketch.viewmodel.CanvasViewModel
 fun Editor(
     canvasViewModel: CanvasViewModel,
     showDialog: MutableState<Boolean>,
-    showImageSourceDialog: MutableState<Boolean>
+    showImageSourceDialog: MutableState<Boolean>,
+    showVideoSourceDialog : MutableState<Boolean>
 ) {
     val selected = canvasViewModel.selected.value
 
@@ -36,11 +37,14 @@ fun Editor(
         BoxType.IMAGE.toString() -> {
             btnLst.add(R.drawable.delete_btn to { canvasViewModel.delete() })
         }
+        BoxType.VIDEO.toString() -> {
+            btnLst.add(R.drawable.delete_btn to { canvasViewModel.delete() })
+        }
         else -> {
             btnLst.add(R.drawable.text_btn to { showDialog.value = true })
             btnLst.add(R.drawable.img_btn to { showImageSourceDialog.value = true })
             btnLst.add(R.drawable.record_btn to { /* TODO: Implement record */ })
-            btnLst.add(R.drawable.video_btn to { /* TODO: Implement video */ })
+            btnLst.add(R.drawable.video_btn to { showVideoSourceDialog.value = true })
         }
     }
 

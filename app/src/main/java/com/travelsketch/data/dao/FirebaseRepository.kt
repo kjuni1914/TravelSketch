@@ -252,6 +252,7 @@ class FirebaseRepository {
             .addOnSuccessListener { onSuccess(storageRef.path) }
             .addOnFailureListener { Log.e("Firebase Storage", "Upload failed: ${it.message}") }
     }
+
     fun saveMetadataToFirestore(
         latitude: Double?,
         longitude: Double?,

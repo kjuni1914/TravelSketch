@@ -211,7 +211,7 @@ fun MediaItemRow(
                 modifier = Modifier.size(100.dp),
                 contentScale = ContentScale.Crop
             )
-            "video" -> VideoPlayer(mediaItem.url)
+            "video" -> VideosPlayer(mediaItem.url)
             "audio" -> AudioPlayer(mediaItem.url)
         }
 
@@ -232,7 +232,7 @@ fun MediaItemRow(
 }
 
 @Composable
-fun VideoPlayer(url: String) {
+fun VideosPlayer(url: String) {
     AndroidView(
         factory = { context ->
             VideoView(context).apply {

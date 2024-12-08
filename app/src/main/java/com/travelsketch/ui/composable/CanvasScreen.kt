@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Paint
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
@@ -27,6 +28,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.travelsketch.data.model.BoxData
@@ -51,6 +53,8 @@ fun CanvasScreen(
     var isDragging by remember { mutableStateOf(false) }
     var dragStartRelativeOffset by remember { mutableStateOf(Offset.Zero) }
     val selectedBoxPosition = remember { mutableStateOf<Offset?>(null) }
+    val invalidateCanvasState = viewModel.invalidateCanvasState
+    val bitmaps = viewModel.bitmaps
 
     val context = LocalContext.current
     val vibrator = remember {
@@ -74,8 +78,6 @@ fun CanvasScreen(
             style = Paint.Style.FILL
         }
     }
-
-    val bitmaps = remember { mutableStateMapOf<String, Bitmap>() }
 
     viewModel.boxes.filter { it.type == BoxType.IMAGE.toString() }.forEach { box ->
         box.data?.let { uri ->
@@ -101,6 +103,20 @@ fun CanvasScreen(
         }
     }
 
+    viewModel.boxes.filter { it.type == BoxType.VIDEO.toString() }.forEach { box ->
+        box.data?.let { uri ->
+            if (!bitmaps.containsKey(uri)) {
+                LaunchedEffect(uri) {
+                    val thumbnail = loadVideoThumbnail(context, uri)
+                    thumbnail?.let { bitmaps[uri] = it }
+                    invalidateCanvasState.value = !invalidateCanvasState.value
+                }
+            }
+        }
+    }
+
+
+
     fun screenToCanvas(screenPos: Offset): Offset {
         return (screenPos - canvasState.offset) / canvasState.scale
     }
@@ -109,7 +125,7 @@ fun CanvasScreen(
         return canvasPos * canvasState.scale + canvasState.offset
     }
 
-    fun DrawScope.drawBox(box: BoxData) {
+    fun DrawScope.drawBox(box: BoxData, bitmaps: Map<String, Bitmap>) {
         when (box.type) {
             BoxType.TEXT.toString() -> {
                 drawIntoCanvas { canvas ->
@@ -152,6 +168,53 @@ fun CanvasScreen(
                     }
                 }
             }
+            BoxType.VIDEO.toString() -> {
+                val videoUri = box.data ?: ""
+                val thumbnail = bitmaps[videoUri]
+                val screenPos = canvasToScreen(Offset(box.boxX.toFloat(), box.boxY.toFloat()))
+                val scaledWidth = (box.width!! * canvasState.scale).coerceAtLeast(100f)
+                val scaledHeight = (box.height!! * canvasState.scale).coerceAtLeast(75f)
+
+                if (thumbnail != null) {
+                    val scaledBitmap = Bitmap.createScaledBitmap(
+                        thumbnail,
+                        scaledWidth.toInt(),
+                        scaledHeight.toInt(),
+                        true
+                    )
+                    drawIntoCanvas { canvas ->
+                        canvas.nativeCanvas.drawBitmap(
+                            scaledBitmap,
+                            screenPos.x,
+                            screenPos.y - scaledHeight,
+                            null
+                        )
+                    }
+                } else {
+                    drawIntoCanvas { canvas ->
+                        canvas.nativeCanvas.drawRect(
+                            screenPos.x,
+                            screenPos.y - scaledHeight,
+                            screenPos.x + scaledWidth,
+                            screenPos.y,
+                            boundaryPaint
+                        )
+                        val paint = Paint().apply {
+                            color = android.graphics.Color.WHITE
+                            textSize = 50 * canvasState.scale
+                            textAlign = Paint.Align.CENTER
+                        }
+                        canvas.nativeCanvas.drawText(
+                            "▶",
+                            screenPos.x + scaledWidth / 2,
+                            screenPos.y - scaledHeight / 2 + paint.textSize / 3,
+                            paint
+                        )
+                    }
+                }
+            }
+
+
         }
     }
 
@@ -178,6 +241,7 @@ fun CanvasScreen(
         }
     }
 
+
     Box(modifier = Modifier.fillMaxSize()) {
         Canvas(
             modifier = Modifier
@@ -190,6 +254,8 @@ fun CanvasScreen(
                     )
                     viewModel.setScreenSize(size.width, size.height)
                 }
+                .then(if (invalidateCanvasState.value) Modifier else Modifier)
+
                 .pointerInput(Unit) {
                     detectTransformGestures { centroid, pan, zoom, _ ->
                         if (!isDragging) {
@@ -295,7 +361,7 @@ fun CanvasScreen(
                         if (!isDragging) {
                             val canvasPos = screenToCanvas(offset)
 
-                            if (viewModel.isTextPlacementMode.value || viewModel.isImagePlacementMode.value) {
+                            if (viewModel.isTextPlacementMode.value || viewModel.isImagePlacementMode.value ||viewModel.isVideoPlacementMode.value) {
                                 viewModel.createBox(canvasPos.x, canvasPos.y)
                             } else {
                                 val hitBox = viewModel.boxes.findLast { box ->
@@ -343,14 +409,16 @@ fun CanvasScreen(
             }
 
             viewModel.boxes.forEach { box ->
-                drawBox(box)
+                viewModel.boxes.forEach { box ->
+                    drawBox(box, bitmaps)
+                }
             }
 
             viewModel.selected.value?.let { selected ->
                 drawSelectionHandles(selected)
             }
 
-            if (viewModel.isTextPlacementMode.value || viewModel.isImagePlacementMode.value) {
+            if (viewModel.isTextPlacementMode.value || viewModel.isImagePlacementMode.value || viewModel.isVideoPlacementMode.value) {
                 drawRect(
                     color = Color.Gray.copy(alpha = 0.2f),
                     topLeft = Offset(canvasState.offset.x, canvasState.offset.y),
@@ -400,3 +468,17 @@ suspend fun loadBitmapFromNetwork(urlString: String): Bitmap? {
         }
     }
 }
+
+fun loadVideoThumbnail(context: Context, videoUri: String): Bitmap? {
+    return try {
+        val retriever = MediaMetadataRetriever()
+        retriever.setDataSource(context, Uri.parse(videoUri))
+        val bitmap = retriever.frameAtTime
+        retriever.release()
+        bitmap
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+

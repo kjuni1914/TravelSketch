@@ -5,15 +5,20 @@ import android.graphics.Paint
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.content.Context
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.storage.FirebaseStorage
 import com.travelsketch.data.dao.FirebaseClient
 import com.travelsketch.data.model.BoxData
 import com.travelsketch.data.model.BoxType
+import com.travelsketch.ui.composable.loadVideoThumbnail
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
@@ -35,6 +40,12 @@ class CanvasViewModel : ViewModel() {
 
     var isImagePlacementMode = mutableStateOf(false)
     var imageToPlace = mutableStateOf<String?>(null)
+
+    var isVideoPlacementMode = mutableStateOf(false)
+    var videoToPlace = mutableStateOf<String?>(null)
+
+    val bitmaps = mutableStateMapOf<String, Bitmap>()
+    val invalidateCanvasState = mutableStateOf(false)
 
     private var context: Context? = null
 
@@ -104,11 +115,18 @@ class CanvasViewModel : ViewModel() {
         isImagePlacementMode.value = true
     }
 
+    fun startVideoPlacement(videoUri: String) {
+        videoToPlace.value = videoUri
+        isVideoPlacementMode.value = true
+    }
+
     fun createBox(canvasX: Float, canvasY: Float) {
         if (isTextPlacementMode.value) {
             createTextBox(canvasX, canvasY)
         } else if (isImagePlacementMode.value) {
             createImageBox(canvasX, canvasY)
+        } else if (isVideoPlacementMode.value){
+            createVideoBox(canvasX,canvasY)
         }
     }
 
@@ -190,6 +208,15 @@ class CanvasViewModel : ViewModel() {
                         "box_${finalBox.boxX}_${finalBox.boxY}",
                         finalBox
                     )
+                    // 5. map 컬렉션의 preview_box_id 업데이트
+                    val mapRef = FirebaseDatabase.getInstance().reference
+                        .child("map/${canvasId.value}")
+                    val snapshot = mapRef.get().await()
+
+                    val previewBoxId = snapshot.child("preview_box_id").value as? String
+                    if (previewBoxId == "image_1") {
+                        mapRef.child("preview_box_id").setValue(imageFileName)
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("CanvasViewModel", "Error creating image box", e)
@@ -199,6 +226,73 @@ class CanvasViewModel : ViewModel() {
                 isUploading.value = false
                 isImagePlacementMode.value = false
                 imageToPlace.value = null
+            }
+        }
+    }
+
+    private fun createVideoBox(canvasX: Float, canvasY: Float) {
+        viewModelScope.launch {
+            val videoUri = videoToPlace.value ?: return@launch
+            val uri = Uri.parse(videoUri)
+
+
+            try {
+                isUploading.value = true
+
+                val width = 600
+                val height = 400
+                val centeredX = canvasX - width / 2f
+                val centeredY = canvasY + height / 2f // Adjust Y position
+                val thumbnail = loadVideoThumbnail(context!!, videoUri)
+
+                val tempBox = BoxData(
+                    boxX = centeredX.toInt(),
+                    boxY = centeredY.toInt(),
+                    width = width,
+                    height = height,
+                    type = BoxType.VIDEO.toString(),
+                    data = videoUri // Temporary local URI
+                )
+                boxes.add(tempBox)
+
+                thumbnail?.let {
+                    bitmaps[videoUri] = it
+                    invalidateCanvasState.value = !invalidateCanvasState.value // Trigger recomposition
+                }
+
+                // Upload video to Firebase Storage
+                val timestamp = System.currentTimeMillis()
+                val videoFileName = "video_${timestamp}.mp4"
+                val storageRef = FirebaseStorage.getInstance().reference
+                    .child("media/videos/$videoFileName")
+
+                context?.contentResolver?.openInputStream(uri)?.use { inputStream ->
+                    val uploadTask = storageRef.putStream(inputStream)
+                    uploadTask.await()
+
+                    val downloadUrl = storageRef.downloadUrl.await().toString()
+
+                    // Update BoxData with Firebase URL
+                    val finalBox = tempBox.copy(data = downloadUrl)
+                    val index = boxes.indexOf(tempBox)
+                    if (index != -1) {
+                        boxes[index] = finalBox
+                    }
+
+                    // Save to Firebase Database
+                    FirebaseClient.writeBoxData(
+                        canvasId.value,
+                        "box_${finalBox.boxX}_${finalBox.boxY}",
+                        finalBox
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("CanvasViewModel", "Error creating video box", e)
+                boxes.removeIf { it.data == videoUri }
+            } finally {
+                isUploading.value = false
+                isVideoPlacementMode.value = false
+                videoToPlace.value = null
             }
         }
     }
