@@ -77,12 +77,19 @@ class CanvasViewModel : ViewModel() {
         viewAllBoxes(id)
     }
 
+    private var boxIdMap = mutableMapOf<String, BoxData>()
+
     private fun viewAllBoxes(canvasId: String) {
         viewModelScope.launch {
             isLoading.value = true
             try {
-                FirebaseClient.readAllBoxData(canvasId)?.forEach { box ->
-                    boxes.add(box)
+                val snapshot = FirebaseClient.readAllBoxData(canvasId)
+                boxes.clear()
+                boxIdMap.clear()
+
+                snapshot?.forEach { boxData ->
+                    boxes.add(boxData)
+                    boxIdMap[boxData.id] = boxData
                 }
             } finally {
                 isLoading.value = false
@@ -147,6 +154,8 @@ class CanvasViewModel : ViewModel() {
             data = text
         )
         boxes.add(box)
+        boxIdMap[box.id] = box
+
         isTextPlacementMode.value = false
         textToPlace.value = ""
 
@@ -170,45 +179,42 @@ class CanvasViewModel : ViewModel() {
                 // 1. 먼저 임시 BoxData를 생성하고 화면에 표시
                 val (width, height) = calculateImageDimensions(context!!, uri)
                 val centeredX = canvasX - width / 2f
-                val centeredY = canvasY + height / 2f  // Y 좌표 조정
+                val centeredY = canvasY - height / 2f
 
+                // 임시 박스 생성
                 val tempBox = BoxData(
                     boxX = centeredX.toInt(),
                     boxY = centeredY.toInt(),
                     width = width,
                     height = height,
                     type = BoxType.IMAGE.toString(),
-                    data = imageUri  // 임시로 로컬 URI 사용
+                    data = "uploading"
                 )
 
+                // 임시 박스 추가
                 boxes.add(tempBox)
+                boxIdMap[tempBox.id] = tempBox
 
-                // 2. 백그라운드에서 이미지 업로드
-                val timestamp = System.currentTimeMillis()
-                val imageFileName = "image_${timestamp}.jpg"
-                val storageRef = FirebaseStorage.getInstance().reference
-                    .child("media/images/$imageFileName")
+                try {
+                    val timestamp = System.currentTimeMillis()
+                    val imageFileName = "image_${timestamp}.jpg"
+                    val storageRef = FirebaseStorage.getInstance().reference
+                        .child("media/images/$imageFileName")
 
-                context?.contentResolver?.openInputStream(uri)?.use { inputStream ->
-                    val uploadTask = storageRef.putStream(inputStream)
-                    uploadTask.await()
+                    val downloadUrl = context?.contentResolver?.openInputStream(uri)?.use { inputStream ->
+                        storageRef.putStream(inputStream).await()
+                        storageRef.downloadUrl.await().toString()
+                    } ?: throw Exception("Failed to get input stream")
 
-                    val downloadUrl = storageRef.downloadUrl.await().toString()
-
-                    // 3. 업로드 완료 후 BoxData 업데이트
-                    val finalBox = tempBox.copy(data = downloadUrl)
-                    val index = boxes.indexOf(tempBox)
-                    if (index != -1) {
-                        boxes[index] = finalBox
-                    }
-
-                    // 4. Firebase Database에 저장
+                    // 상태 업데이트를 한 번만 하도록 수정
+                    tempBox.data = downloadUrl
+                    // DB에 저장
                     FirebaseClient.writeBoxData(
                         canvasId.value,
-                        "box_${finalBox.boxX}_${finalBox.boxY}",
-                        finalBox
+                        tempBox.id,
+                        tempBox
                     )
-                    // 5. map 컬렉션의 preview_box_id 업데이트
+
                     val mapRef = FirebaseDatabase.getInstance().reference
                         .child("map/${canvasId.value}")
                     val snapshot = mapRef.get().await()
@@ -217,7 +223,13 @@ class CanvasViewModel : ViewModel() {
                     if (previewBoxId == "image_1") {
                         mapRef.child("preview_box_id").setValue(imageFileName)
                     }
-                }
+                } catch (e: Exception) {
+                    boxes.remove(tempBox)
+                    boxIdMap.remove(tempBox.id)
+                    Log.e("CanvasViewModel", "Error uploading image", e)
+                    throw e
+
+                    }
             } catch (e: Exception) {
                 Log.e("CanvasViewModel", "Error creating image box", e)
                 // 에러 발생 시 임시 박스 제거
@@ -299,22 +311,28 @@ class CanvasViewModel : ViewModel() {
 
     private suspend fun calculateImageDimensions(context: Context, uri: Uri): Pair<Int, Int> {
         return withContext(Dispatchers.IO) {
-            val options = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
-            }
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                BitmapFactory.decodeStream(inputStream, null, options)
-            }
+            try {
+                val options = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
 
-            val maxSize = 500
-            val width = options.outWidth
-            val height = options.outHeight
-            val ratio = width.toFloat() / height.toFloat()
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    BitmapFactory.decodeStream(inputStream, null, options)
+                }
 
-            if (width > height) {
-                Pair(maxSize, (maxSize / ratio).toInt())
-            } else {
-                Pair((maxSize * ratio).toInt(), maxSize)
+                val maxSize = 500
+                val width = options.outWidth
+                val height = options.outHeight
+                val ratio = width.toFloat() / height.toFloat()
+
+                if (width > height) {
+                    Pair(maxSize, (maxSize / ratio).toInt())
+                } else {
+                    Pair((maxSize * ratio).toInt(), maxSize)
+                }
+            } catch (e: Exception) {
+                Log.e("CanvasViewModel", "Error calculating image dimensions", e)
+                Pair(500, 500)
             }
         }
     }
@@ -322,12 +340,46 @@ class CanvasViewModel : ViewModel() {
     fun delete() {
         viewModelScope.launch {
             selected.value?.let { box ->
-                boxes.remove(box)
-                selected.value = null
-                FirebaseClient.deleteBoxData(canvasId.value, "box_${box.boxX}_${box.boxY}")
+                try {
+                    if (box.type == BoxType.IMAGE.toString() && box.data.startsWith("https")) {
+                        try {
+                            val storage = FirebaseStorage.getInstance()
+                            val imageRef = storage.getReferenceFromUrl(box.data)
+                            imageRef.delete().await()
+                        } catch (e: Exception) {
+                            Log.e("CanvasViewModel", "Failed to delete image from storage", e)
+                        }
+                    }
+
+                    FirebaseClient.deleteBoxData(canvasId.value, box.id)
+
+                    boxes.remove(box)
+                    boxIdMap.remove(box.id)
+                    selected.value = null
+                } catch (e: Exception) {
+                    Log.e("CanvasViewModel", "Failed to delete box", e)
+                }
             }
         }
     }
+
+    fun updateBoxPosition(newX: Int, newY: Int) {
+        val currentBox = selected.value ?: return
+
+        currentBox.boxX = newX
+        currentBox.boxY = newY
+
+        val index = boxes.indexOfFirst { it.id == currentBox.id }
+        if (index != -1) {
+            boxes[index] = currentBox
+            boxIdMap[currentBox.id] = currentBox
+        }
+
+        viewModelScope.launch {
+            FirebaseClient.writeBoxData(canvasId.value, currentBox.id, currentBox)
+        }
+    }
+
 
     fun saveAll() {
         viewModelScope.launch {
@@ -336,7 +388,7 @@ class CanvasViewModel : ViewModel() {
                 boxes.forEach { box ->
                     FirebaseClient.writeBoxData(
                         canvasId.value,
-                        "box_${box.boxX}_${box.boxY}",
+                        box.id,
                         box
                     )
                 }
@@ -344,5 +396,12 @@ class CanvasViewModel : ViewModel() {
                 isLoading.value = false
             }
         }
+    }
+
+    fun endPlacementMode() {
+        isTextPlacementMode.value = false
+        isImagePlacementMode.value = false
+        textToPlace.value = ""
+        imageToPlace.value = null
     }
 }

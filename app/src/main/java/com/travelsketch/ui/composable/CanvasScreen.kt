@@ -9,9 +9,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -28,7 +28,6 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.travelsketch.data.model.BoxData
@@ -54,15 +53,12 @@ fun CanvasScreen(
     var dragStartRelativeOffset by remember { mutableStateOf(Offset.Zero) }
     val selectedBoxPosition = remember { mutableStateOf<Offset?>(null) }
     val invalidateCanvasState = viewModel.invalidateCanvasState
-    val bitmaps = viewModel.bitmaps
+
 
     val context = LocalContext.current
     val vibrator = remember {
         context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
-
-    // 이미지 업로드 진행 상태 표시를 위한 상태
-    val isUploading by remember { viewModel.isUploading }
 
     val boundaryPaint = remember {
         Paint().apply {
@@ -72,32 +68,37 @@ fun CanvasScreen(
         }
     }
 
-    val boxPaint = remember {
-        Paint().apply {
-            color = android.graphics.Color.BLACK
-            style = Paint.Style.FILL
-        }
-    }
+    val bitmaps = remember { mutableStateMapOf<String, Bitmap>() }
+    val loadingStates = remember { mutableStateMapOf<String, Boolean>() }
 
-    viewModel.boxes.filter { it.type == BoxType.IMAGE.toString() }.forEach { box ->
-        box.data?.let { uri ->
-            if (!bitmaps.containsKey(uri)) {
-                LaunchedEffect(uri) {
-                    val bitmap = if (uri.startsWith("http")) {
-                        loadBitmapFromNetwork(uri)
+    LaunchedEffect(viewModel.boxes) {
+        viewModel.boxes.filter { it.type == BoxType.IMAGE.toString() }.forEach { box ->
+            val imageUrl = box.data
+            if (!imageUrl.isNullOrEmpty() && imageUrl != "uploading" && !bitmaps.containsKey(imageUrl)) {
+                loadingStates[imageUrl] = true
+                try {
+                    val bitmap = if (imageUrl.startsWith("http")) {
+                        loadBitmapFromNetwork(imageUrl)
                     } else {
                         withContext(Dispatchers.IO) {
                             try {
-                                val parsedUri = Uri.parse(uri)
-                                context.contentResolver.openInputStream(parsedUri)?.use { inputStream ->
-                                    BitmapFactory.decodeStream(inputStream)
+                                val uri = Uri.parse(imageUrl)
+                                context.contentResolver.openInputStream(uri)?.use { input ->
+                                    BitmapFactory.decodeStream(input)
                                 }
                             } catch (e: Exception) {
+                                Log.e("CanvasScreen", "Error loading local image", e)
                                 null
                             }
                         }
                     }
-                    bitmap?.let { bitmaps[uri] = it }
+                    bitmap?.let {
+                        bitmaps[imageUrl] = it
+                    }
+                } catch (e: Exception) {
+                    Log.e("CanvasScreen", "Error loading image", e)
+                } finally {
+                    loadingStates[imageUrl] = false
                 }
             }
         }
@@ -125,11 +126,19 @@ fun CanvasScreen(
         return canvasPos * canvasState.scale + canvasState.offset
     }
 
-    fun DrawScope.drawBox(box: BoxData, bitmaps: Map<String, Bitmap>) {
+    fun DrawScope.drawBox(box: BoxData) {
+        val isSelectedAndDragging = (box == viewModel.selected.value && isDragging && selectedBoxPosition.value != null)
+
+        val (boxX, boxY) = if (isSelectedAndDragging) {
+            selectedBoxPosition.value!!
+        } else {
+            Offset(box.boxX.toFloat(), box.boxY.toFloat())
+        }
+
         when (box.type) {
             BoxType.TEXT.toString() -> {
                 drawIntoCanvas { canvas ->
-                    val screenPos = canvasToScreen(Offset(box.boxX.toFloat(), box.boxY.toFloat()))
+                    val screenPos = canvasToScreen(Offset(boxX, boxY))
                     val scaledWidth = box.width!! * canvasState.scale
                     val scaledHeight = box.height!! * canvasState.scale
 
@@ -147,27 +156,69 @@ fun CanvasScreen(
                 }
             }
             BoxType.IMAGE.toString() -> {
-                val bitmap = bitmaps[box.data ?: ""]
-                bitmap?.let {
-                    val screenPos = canvasToScreen(Offset(box.boxX.toFloat(), box.boxY.toFloat()))
-                    val scaledWidth = box.width!! * canvasState.scale
-                    val scaledHeight = box.height!! * canvasState.scale
-                    val scaledBitmap = Bitmap.createScaledBitmap(
-                        it,
-                        scaledWidth.toInt(),
-                        scaledHeight.toInt(),
-                        true
+                val imageUrl = box.data
+                val bitmap = bitmaps[imageUrl]
+                val isLoading = loadingStates[imageUrl] == true || imageUrl == "uploading"
+
+                val screenPos = canvasToScreen(Offset(boxX, boxY))
+                val scaledWidth = box.width!! * canvasState.scale
+                val scaledHeight = box.height!! * canvasState.scale
+
+                if (isLoading) {
+                    drawRect(
+                        color = Color.Gray.copy(alpha = 0.3f),
+                        topLeft = Offset(screenPos.x, screenPos.y),
+                        size = Size(scaledWidth, scaledHeight)
                     )
                     drawIntoCanvas { canvas ->
+                        val paint = Paint().apply {
+                            color = android.graphics.Color.BLACK
+                            textSize = 40f * canvasState.scale
+                            textAlign = Paint.Align.CENTER
+                        }
+                        canvas.nativeCanvas.drawText(
+                            "Loading...",
+                            screenPos.x + scaledWidth / 2,
+                            screenPos.y + scaledHeight / 2,
+                            paint
+                        )
+                    }
+                } else if (bitmap != null) {
+                    drawIntoCanvas { canvas ->
                         canvas.nativeCanvas.drawBitmap(
-                            scaledBitmap,
-                            screenPos.x,
-                            screenPos.y - scaledHeight, // Y 좌표 조정
+                            bitmap,
+                            null,
+                            android.graphics.RectF(
+                                screenPos.x,
+                                screenPos.y,
+                                screenPos.x + scaledWidth,
+                                screenPos.y + scaledHeight
+                            ),
                             null
+                        )
+                    }
+                } else {
+                    drawRect(
+                        color = Color.Red.copy(alpha = 0.3f),
+                        topLeft = Offset(screenPos.x, screenPos.y),
+                        size = Size(scaledWidth, scaledHeight)
+                    )
+                    drawIntoCanvas { canvas ->
+                        val paint = Paint().apply {
+                            color = android.graphics.Color.RED
+                            textSize = 40f * canvasState.scale
+                            textAlign = Paint.Align.CENTER
+                        }
+                        canvas.nativeCanvas.drawText(
+                            "Load Failed",
+                            screenPos.x + scaledWidth / 2,
+                            screenPos.y + scaledHeight / 2,
+                            paint
                         )
                     }
                 }
             }
+
             BoxType.VIDEO.toString() -> {
                 val videoUri = box.data ?: ""
                 val thumbnail = bitmaps[videoUri]
@@ -219,28 +270,26 @@ fun CanvasScreen(
     }
 
     fun DrawScope.drawSelectionHandles(box: BoxData) {
+        val (boxX, boxY) = if (box == viewModel.selected.value && isDragging && selectedBoxPosition.value != null) {
+            selectedBoxPosition.value!!
+        } else {
+            Offset(box.boxX.toFloat(), box.boxY.toFloat())
+        }
+
         drawIntoCanvas { canvas ->
-            val screenPos = canvasToScreen(Offset(box.boxX.toFloat(), box.boxY.toFloat()))
+            val screenPos = canvasToScreen(Offset(boxX, boxY))
             val scaledWidth = box.width!! * canvasState.scale
             val scaledHeight = box.height!! * canvasState.scale
             val handleRadius = 5f * canvasState.scale
 
             canvas.nativeCanvas.run {
-                // 이미지인 경우 Y 좌표 조정
-                val adjustedY = if (box.type == BoxType.IMAGE.toString()) {
-                    screenPos.y - scaledHeight
-                } else {
-                    screenPos.y
-                }
-
-                drawCircle(screenPos.x, adjustedY, handleRadius, viewModel.selectBrush.value)
-                drawCircle(screenPos.x, adjustedY + scaledHeight, handleRadius, viewModel.selectBrush.value)
-                drawCircle(screenPos.x + scaledWidth, adjustedY, handleRadius, viewModel.selectBrush.value)
-                drawCircle(screenPos.x + scaledWidth, adjustedY + scaledHeight, handleRadius, viewModel.selectBrush.value)
+                drawCircle(screenPos.x, screenPos.y, handleRadius, viewModel.selectBrush.value)
+                drawCircle(screenPos.x, screenPos.y + scaledHeight, handleRadius, viewModel.selectBrush.value)
+                drawCircle(screenPos.x + scaledWidth, screenPos.y, handleRadius, viewModel.selectBrush.value)
+                drawCircle(screenPos.x + scaledWidth, screenPos.y + scaledHeight, handleRadius, viewModel.selectBrush.value)
             }
         }
     }
-
 
     Box(modifier = Modifier.fillMaxSize()) {
         Canvas(
@@ -287,14 +336,8 @@ fun CanvasScreen(
 
                                 val isInXRange = canvasPos.x >= boxPos.x &&
                                         canvasPos.x <= boxPos.x + boxSize.width
-
-                                val isInYRange = if (box.type == BoxType.IMAGE.toString()) {
-                                    canvasPos.y >= boxPos.y - boxSize.height &&
-                                            canvasPos.y <= boxPos.y
-                                } else {
-                                    canvasPos.y >= boxPos.y &&
-                                            canvasPos.y <= boxPos.y + boxSize.height
-                                }
+                                val isInYRange = canvasPos.y >= boxPos.y &&
+                                        canvasPos.y <= boxPos.y + boxSize.height
 
                                 isInXRange && isInYRange
                             }
@@ -320,13 +363,14 @@ fun CanvasScreen(
                             change.consume()
                             val selectedBox = viewModel.selected.value
                             if (isDragging && selectedBox != null) {
-                                val canvasDragAmount = dragAmount / canvasState.scale
-                                selectedBox.boxX = (screenToCanvas(change.position).x - dragStartRelativeOffset.x).toInt()
-                                selectedBox.boxY = (screenToCanvas(change.position).y - dragStartRelativeOffset.y).toInt()
+                                val canvasPos = screenToCanvas(change.position)
+                                val newX = (canvasPos.x - dragStartRelativeOffset.x).toInt()
+                                val newY = (canvasPos.y - dragStartRelativeOffset.y).toInt()
 
-                                selectedBoxPosition.value = Offset(selectedBox.boxX.toFloat(), selectedBox.boxY.toFloat())
+                                // 드래그 중에는 selectedBoxPosition을 업데이트하여 화면에 실시간으로 반영
+                                selectedBoxPosition.value = Offset(newX.toFloat(), newY.toFloat())
 
-                                val screenPos = canvasToScreen(Offset(selectedBox.boxX.toFloat(), selectedBox.boxY.toFloat()))
+                                val screenPos = canvasToScreen(Offset(newX.toFloat(), newY.toFloat()))
                                 val margin = 50f
 
                                 var newOffset = canvasState.offset
@@ -348,7 +392,12 @@ fun CanvasScreen(
                             }
                         },
                         onDragEnd = {
+                            // 드래그 종료 시 ViewModel에 최종 위치 반영
                             isDragging = false
+                            val selectedBox = viewModel.selected.value
+                            selectedBoxPosition.value?.let { finalPos ->
+                                viewModel.updateBoxPosition(finalPos.x.toInt(), finalPos.y.toInt())
+                            }
                             viewModel.saveAll()
                         },
                         onDragCancel = {
@@ -361,8 +410,13 @@ fun CanvasScreen(
                         if (!isDragging) {
                             val canvasPos = screenToCanvas(offset)
 
-                            if (viewModel.isTextPlacementMode.value || viewModel.isImagePlacementMode.value ||viewModel.isVideoPlacementMode.value) {
-                                viewModel.createBox(canvasPos.x, canvasPos.y)
+                            if (viewModel.isTextPlacementMode.value || viewModel.isImagePlacementMode.value) {
+                                onTapForBox(canvasPos)
+                                // 박스 배치 후 배치 모드 종료
+                                viewModel.isTextPlacementMode.value = false
+                                viewModel.isImagePlacementMode.value = false
+                                viewModel.textToPlace.value = ""
+                                viewModel.imageToPlace.value = null
                             } else {
                                 val hitBox = viewModel.boxes.findLast { box ->
                                     val boxPos = Offset(box.boxX.toFloat(), box.boxY.toFloat())
@@ -370,14 +424,8 @@ fun CanvasScreen(
 
                                     val isInXRange = canvasPos.x >= boxPos.x &&
                                             canvasPos.x <= boxPos.x + boxSize.width
-
-                                    val isInYRange = if (box.type == BoxType.IMAGE.toString()) {
-                                        canvasPos.y >= boxPos.y - boxSize.height &&
-                                                canvasPos.y <= boxPos.y
-                                    } else {
-                                        canvasPos.y >= boxPos.y &&
-                                                canvasPos.y <= boxPos.y + boxSize.height
-                                    }
+                                    val isInYRange = canvasPos.y >= boxPos.y &&
+                                            canvasPos.y <= boxPos.y + boxSize.height
 
                                     isInXRange && isInYRange
                                 }
@@ -385,8 +433,6 @@ fun CanvasScreen(
                                 if (hitBox == null) {
                                     if (viewModel.selected.value != null) {
                                         viewModel.clearSelection()
-                                    } else {
-                                        onTapForBox(canvasPos)
                                     }
                                 } else {
                                     if (hitBox != viewModel.selected.value) {
@@ -410,7 +456,7 @@ fun CanvasScreen(
 
             viewModel.boxes.forEach { box ->
                 viewModel.boxes.forEach { box ->
-                    drawBox(box, bitmaps)
+                    drawBox(box)
                 }
             }
 
@@ -438,18 +484,6 @@ fun CanvasScreen(
                     .padding(16.dp),
                 color = Color.Black
             )
-        }
-
-        if (isUploading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(48.dp),
-                    color = Color.Blue
-                )
-            }
         }
     }
 }
