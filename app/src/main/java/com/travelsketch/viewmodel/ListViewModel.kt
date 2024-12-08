@@ -1,5 +1,6 @@
 package com.travelsketch.viewmodel
 
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -73,6 +74,54 @@ class ListViewModel : ViewModel() {
             _friendCanvasDataList.value = filteredFriendCanvasData
         }
     }
+    fun updateCanvasTitle(canvasId: String, newTitle: String) {
+        viewModelScope.launch {
+            try {
+                // Firebase에 제목 업데이트
+                repository.updateCanvasTitle(canvasId, newTitle)
+
+                // 로컬 상태 업데이트
+                val updatedList = _canvasList.value.map { canvas ->
+                    if (canvas.canvasId == canvasId) {
+                        canvas.copy(title = newTitle)
+                    } else {
+                        canvas
+                    }
+                }
+                _canvasList.value = updatedList
+            } catch (e: Exception) {
+                Log.e("ListViewModel", "Failed to update canvas title", e)
+            }
+        }
+    }
+
+    fun updatePreviewImage(canvasId: String, imageName: String) {
+        viewModelScope.launch {
+            try {
+                repository.updatePreviewImage(canvasId, imageName)
+            } catch (e: Exception) {
+                Log.e("ListViewModel", "Failed to update preview image", e)
+            }
+        }
+    }
+
+    fun deleteCanvas(canvasId: String) {
+        viewModelScope.launch {
+            try {
+                // Firebase에서 캔버스 삭제
+                repository.deleteCanvas(canvasId)
+
+                // 로컬 상태 업데이트 (삭제된 캔버스 제외)
+                val updatedList = _canvasList.value.filter { canvas ->
+                    canvas.canvasId != canvasId
+                }
+                _canvasList.value = updatedList
+            } catch (e: Exception) {
+                Log.e("ListViewModel", "Failed to delete canvas", e)
+            }
+        }
+    }
+
     fun toggleCanvasVisibility(canvasId: String, newVisibility: Boolean, userId: String) {
         viewModelScope.launch {
             try {

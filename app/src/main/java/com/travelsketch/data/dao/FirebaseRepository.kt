@@ -177,6 +177,21 @@ class FirebaseRepository {
         }
     }
 
+    suspend fun updateCanvasTitle(canvasId: String, title: String) {
+        try {
+            database.child("map").child(canvasId).child("title").setValue(title).await()
+            database.child("canvas").child(canvasId).child("title").setValue(title).await()
+            Log.d("FirebaseRepository", "Canvas $canvasId visibility updated to $title")
+        } catch (e: Exception) {
+            Log.e("FirebaseRepository", "Failed to update visibility for canvas $canvasId", e)
+        }
+    }
+
+    suspend fun updatePreviewImage(canvasId: String, imageName: String) {
+        val databaseRef = FirebaseDatabase.getInstance().reference.child("map/$canvasId/preview_box_id")
+        databaseRef.setValue(imageName).await()
+    }
+
     suspend fun updateFcmToken(userId: String, token: String) {
         database.child("users").child(userId).child("fcmToken").setValue(token).await()
     }
@@ -224,6 +239,21 @@ class FirebaseRepository {
         }
     }
 
+    suspend fun deleteCanvas(canvasId: String) {
+        try {
+            // Realtime Database에서 캔버스 삭제
+            val databaseRef = FirebaseDatabase.getInstance().reference
+            databaseRef.child("map").child(canvasId).removeValue().await()
+            databaseRef.child("canvas").child(canvasId).removeValue().await()
+            // 관련 Storage 데이터 삭제 (예: preview_box_id 이미지)
+            val storageRef = FirebaseStorage.getInstance().reference.child("media/images/$canvasId")
+            storageRef.delete().await()
+
+            Log.d("FirebaseRepository", "Successfully deleted canvas and related data for $canvasId")
+        } catch (e: Exception) {
+            Log.e("FirebaseRepository", "Failed to delete canvas $canvasId", e)
+        }
+    }
 
     // Firebase Snapshot을 CanvasData로 변환
     private fun parseMapCanvasData(snapshot: DataSnapshot, canvasId: String): MapData {
@@ -252,7 +282,6 @@ class FirebaseRepository {
             .addOnSuccessListener { onSuccess(storageRef.path) }
             .addOnFailureListener { Log.e("Firebase Storage", "Upload failed: ${it.message}") }
     }
-
     fun saveMetadataToFirestore(
         latitude: Double?,
         longitude: Double?,

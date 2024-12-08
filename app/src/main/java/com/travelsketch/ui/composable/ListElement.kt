@@ -4,9 +4,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,15 +33,21 @@ fun ListElement(
     isVisible: Boolean, // 현재 is_visible 값
     isCurrentUserCanvas: Boolean, // 현재 사용자의 캔버스인지 여부
     onToggleVisibility: (String, Boolean) -> Unit, // visibility 변경 콜백 추가
-    onNavigateToCanvas: (String) -> Unit
+    onNavigateToCanvas: (String) -> Unit,
+    onUpdateTitle: (String, String) -> Unit, // 제목 업데이트 콜백 추가
+    onDeleteCanvas: (String) -> Unit,
+    onUpdateCoverImage: (String) -> Unit, // Set Cover Image 콜백 추가
 ) {
     var isVisibleState by remember { mutableStateOf(isVisible) }
+    var showDialog by remember { mutableStateOf(false) }
+    var newTitle by remember { mutableStateOf(title) }
     val TitleFontFamily = FontFamily(
         Font(R.font.typo_crayonm) // 파일 이름은 확장자 없이 사용
     )
 
-    Box(modifier = Modifier
-        .fillMaxSize()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
     ) {
         // 카드 배경
         Card(
@@ -46,7 +55,8 @@ fun ListElement(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(240.dp) // 고정 높이 설정
-                .padding(10.dp),
+                .padding(10.dp)
+                .clickable { onNavigateToCanvas(canvasId) }, // Card 클릭 이벤트
             colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF9C4)), // 약간 더 진한 배경색
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp) // 그림자 효과 추가
         ) {}
@@ -80,7 +90,7 @@ fun ListElement(
                     .absoluteOffset(x = 300.dp, y = 5.dp) // 상단 우측 고정
                     .size(40.dp) // 크기 고정
                     .clickable {
-                            onNavigateToCanvas(canvasId)
+                        showDialog = true // 다이얼로그 표시
                     }
             )
 
@@ -100,6 +110,65 @@ fun ListElement(
                         isVisibleState = !isVisibleState
                         onToggleVisibility(canvasId, !isVisible)
                     }
+            )
+        }
+
+        // 다이얼로그
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                title = {
+                    Text(text = "Edit Options")
+                },
+                text = {
+                    Column {
+                        var isEditingTitle by remember { mutableStateOf(false) }
+
+                        if (isEditingTitle) {
+                            TextField(
+                                value = newTitle,
+                                onValueChange = { newTitle = it },
+                                label = { Text("New Title") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        } else {
+                            Text(
+                                text = "1. Edit Title",
+                                modifier = Modifier.clickable {
+                                    isEditingTitle = true
+                                }
+                            )
+                        }
+
+                        Text(text = "2. Set Cover Image",
+                            modifier = Modifier.clickable {
+                                onUpdateCoverImage(canvasId)
+                                showDialog = false
+                            }
+                        )
+                        Text(text = "3. Delete Canvas",
+                            modifier = Modifier.clickable {
+                                // Canvas 삭제
+                                onDeleteCanvas(canvasId)
+                                showDialog = false
+                            })
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        if (newTitle.isNotBlank()) {
+                            onUpdateTitle(canvasId, newTitle)
+                            showDialog = false
+                        }
+                    }) {
+                        Text("Save")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
             )
         }
     }

@@ -215,14 +215,6 @@ class CanvasViewModel : ViewModel() {
                         tempBox
                     )
 
-                    val mapRef = FirebaseDatabase.getInstance().reference
-                        .child("map/${canvasId.value}")
-                    val snapshot = mapRef.get().await()
-
-                    val previewBoxId = snapshot.child("preview_box_id").value as? String
-                    if (previewBoxId == "image_1") {
-                        mapRef.child("preview_box_id").setValue(imageFileName)
-                    }
                 } catch (e: Exception) {
                     boxes.remove(tempBox)
                     boxIdMap.remove(tempBox.id)

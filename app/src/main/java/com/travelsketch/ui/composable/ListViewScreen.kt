@@ -41,8 +41,10 @@ fun ListViewScreen(
     onNavigateToMapSetup: () -> Unit,
     onAddFriend: (String) -> Unit, // 친구 추가 콜백\
     onToggleVisibility: (String, Boolean) -> Unit, // visibility 변경 콜백 추가
-//    onElementClick: (String) -> Unit // canvasId 전달 콜백
-    onNavigateToCanvas: (String) -> Unit
+    onNavigateToCanvas: (String) -> Unit,
+    onUpdateTitle: (String, String) -> Unit,
+    onUpdateCoverImage: (String) -> Unit, // Update Cover Image 콜백 추가
+    onDeleteCanvas: (String) -> Unit // Delete Canvas 콜백 추가
 ) {
     val CustomFontFamily = FontFamily(
         Font(R.font.waving_at_christmas) // 파일 이름은 확장자 없이 사용
@@ -87,8 +89,10 @@ fun ListViewScreen(
                     isCurrentUserCanvas = true, // 현재 사용자의 캔버스
                     isVisible = item.isVisible, // 초기 is_visible 값
                     onToggleVisibility = onToggleVisibility,
-                    onNavigateToCanvas = { onNavigateToCanvas(item.canvasId) }
-//                    onClick = onElementClick // 클릭 이벤트 처리
+                    onNavigateToCanvas = { onNavigateToCanvas(item.canvasId) },
+                    onUpdateTitle = onUpdateTitle,
+                    onUpdateCoverImage = { onUpdateCoverImage(item.canvasId) }, // Update Cover Image 전달
+                    onDeleteCanvas = { onDeleteCanvas(item.canvasId) } // Delete Canvas 전달
                 )
             }
             // 친구의 캔버스 데이터 섹션
@@ -113,7 +117,10 @@ fun ListViewScreen(
                     isCurrentUserCanvas = false, // 친구의 캔버스
                     isVisible = true, // 초기 is_visible 값
                     onToggleVisibility = { _, _ -> }, // 비어 있는 콜백 전달
-                    onNavigateToCanvas = { onNavigateToCanvas(item.canvasId) }
+                    onNavigateToCanvas = { onNavigateToCanvas(item.canvasId) },
+                    onUpdateTitle = onUpdateTitle, // onUpdateTitle 전달
+                    onUpdateCoverImage = {}, // 친구 캔버스에서는 사용하지 않음
+                    onDeleteCanvas = {} // 친구 캔버스에서는 사용하지 않음
                 )
             }
         }
