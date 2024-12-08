@@ -1,8 +1,6 @@
 package com.travelsketch.data.dao
 
-import android.net.Uri
 import android.util.Log
-import androidx.compose.animation.core.snap
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.getValue
@@ -11,13 +9,7 @@ import com.google.firebase.storage.StorageReference
 import com.travelsketch.data.model.BoxData
 import com.travelsketch.data.model.CanvasData
 import com.travelsketch.data.model.UserData
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 
 object FirebaseClient: DatabaseClient {
     override val databaseRef: DatabaseReference
@@ -111,7 +103,8 @@ object FirebaseClient: DatabaseClient {
         boxData: BoxData
     ): Boolean {
         return try {
-            databaseRef.child("canvas").child(canvasId).child(boxId).setValue(boxData).await()
+            // boxData의 자동 생성된 id를 사용
+            databaseRef.child("canvas").child(canvasId).child(boxData.id).setValue(boxData).await()
             true
         } catch (e: Exception) {
             Log.d("ITM", "DAO Error: $e")
@@ -123,11 +116,14 @@ object FirebaseClient: DatabaseClient {
         return try {
             val snapshot = databaseRef.child("canvas").child(canvasId).child(boxId).get().await()
 
-            if (snapshot.exists())
-                snapshot.getValue(BoxData::class.java)
-            else
+            if (snapshot.exists()) {
+                val boxData = snapshot.getValue(BoxData::class.java)
+                // ID 필드 설정
+                boxData?.id = boxId
+                boxData
+            } else {
                 null
-
+            }
         } catch (e: Exception) {
             Log.d("ITM", "DAO Error: $e")
             null
@@ -137,25 +133,26 @@ object FirebaseClient: DatabaseClient {
     override suspend fun readAllBoxData(canvasId: String): List<BoxData>? {
         return try {
             val snapshot = databaseRef.child("canvas").child(canvasId).get().await()
-            val canvasDataList = mutableListOf<BoxData>()
+            val boxDataList = mutableListOf<BoxData>()
 
             if (snapshot.exists()) {
                 snapshot.children.forEach { child ->
-                    if (child.key?.startsWith("box_") == true) {
-                        val boxData = child.getValue(BoxData::class.java)
-                        if (boxData != null)
-                            canvasDataList.add(boxData)
+                    val boxData = child.getValue(BoxData::class.java)
+                    if (boxData != null) {
+                        // 저장된 key를 ID로 설정
+                        boxData.id = child.key ?: boxData.id
+                        boxDataList.add(boxData)
                     }
                 }
             }
 
-            canvasDataList
-
+            boxDataList
         } catch (e: Exception) {
             Log.d("ITM", "DAO Error: $e")
             null
         }
     }
+
     override suspend fun deleteBoxData(canvasId: String, boxId: String): Boolean {
         return try {
             databaseRef.child("canvas").child(canvasId).child(boxId).removeValue().await()
