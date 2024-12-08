@@ -7,6 +7,7 @@ import com.google.firebase.database.getValue
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import com.travelsketch.data.model.BoxData
+import com.travelsketch.data.model.BoxType
 import com.travelsketch.data.model.CanvasData
 import com.travelsketch.data.model.UserData
 import kotlinx.coroutines.tasks.await
@@ -103,18 +104,15 @@ object FirebaseClient: DatabaseClient {
         boxData: BoxData
     ): Boolean {
         return try {
-            Log.d("FirebaseClient", "Writing box data - Canvas: $canvasId, Box: $boxId")
-            Log.d("FirebaseClient", "Box data: $boxData")
+            Log.d("asdfasdfasdf", "Writing box data - Canvas: $canvasId, Box: ${boxData.id}")
+            Log.d("asdfasdfasdf", "Box data to write: $boxData")
 
             val reference = databaseRef.child("canvas").child(canvasId).child(boxData.id)
-            Log.d("FirebaseClient", "Writing to path: ${reference}")  // toString() 없이도 작동합니다
-
             reference.setValue(boxData).await()
-            Log.d("FirebaseClient", "Successfully wrote box data")
+            Log.d("asdfasdfasdf", "Successfully wrote box data")
             true
         } catch (e: Exception) {
-            Log.e("FirebaseClient", "Error writing box data", e)
-            e.printStackTrace()
+            Log.e("asdfasdfasdf", "Error writing box data", e)
             false
         }
     }
@@ -139,40 +137,37 @@ object FirebaseClient: DatabaseClient {
 
     override suspend fun readAllBoxData(canvasId: String): List<BoxData>? {
         return try {
-            Log.d("FirebaseClient", "Attempting to read boxes for canvas: $canvasId")
-            val reference = databaseRef.child("canvas").child(canvasId)
-            Log.d("FirebaseClient", "Database reference: $reference")
-
-            val snapshot = reference.get().await()
-            Log.d("FirebaseClient", "Snapshot exists: ${snapshot.exists()}")
-            Log.d("FirebaseClient", "Snapshot children count: ${snapshot.childrenCount}")
+            Log.d("asdfasdfasdf", "Starting readAllBoxData for canvas: $canvasId")
+            val snapshot = databaseRef.child("canvas").child(canvasId).get().await()
+            Log.d("asdfasdfasdf", "Received snapshot exists: ${snapshot.exists()}")
 
             val boxDataList = mutableListOf<BoxData>()
 
             if (snapshot.exists()) {
                 snapshot.children.forEach { child ->
-                    Log.d("FirebaseClient", "Processing child key: ${child.key}")
-                    // title 필드는 무시하고 BoxData만 처리
                     if (child.key != "title") {
                         try {
                             val boxData = child.getValue(BoxData::class.java)
-                            if (boxData != null) {
-                                boxData.id = child.key ?: boxData.id
-                                boxDataList.add(boxData)
-                                Log.d("FirebaseClient", "Added box: $boxData")
+                            boxData?.let {
+                                it.id = child.key ?: it.id
+                                // data가 "uploading"이 아닌 경우에만 추가
+                                if (it.data != "uploading") {
+                                    boxDataList.add(it)
+                                    Log.d("asdfasdfasdf", "Added box: $it")
+                                }
                             }
                         } catch (e: Exception) {
-                            Log.e("FirebaseClient", "Error parsing box data for key: ${child.key}", e)
+                            Log.e("asdfasdfasdf", "Error processing box data for key: ${child.key}", e)
                         }
                     }
                 }
             }
 
-            Log.d("FirebaseClient", "Finished reading. Total boxes: ${boxDataList.size}")
+            Log.d("asdfasdfasdf", "Returning ${boxDataList.size} boxes")
             boxDataList
+
         } catch (e: Exception) {
-            Log.e("FirebaseClient", "Error reading box data", e)
-            e.printStackTrace()
+            Log.e("asdfasdfasdf", "Error in readAllBoxData", e)
             null
         }
     }

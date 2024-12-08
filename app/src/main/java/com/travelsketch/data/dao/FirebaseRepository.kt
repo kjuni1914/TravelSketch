@@ -4,11 +4,11 @@ import android.net.Uri
 import android.util.Log
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.travelsketch.data.model.MapData
 import kotlinx.coroutines.tasks.await
 import java.io.File
+import java.util.UUID
 
 class FirebaseRepository {
     private val database = FirebaseDatabase.getInstance().reference
@@ -282,25 +282,30 @@ class FirebaseRepository {
             .addOnSuccessListener { onSuccess(storageRef.path) }
             .addOnFailureListener { Log.e("Firebase Storage", "Upload failed: ${it.message}") }
     }
-    fun saveMetadataToFirestore(
-        latitude: Double?,
-        longitude: Double?,
-        timestamp: String?,
-        storagePath: String,
-        onComplete: () -> Unit
-    ) {
-        val metadata = hashMapOf(
-            "latitude" to latitude,
-            "longitude" to longitude,
-            "timestamp" to timestamp,
-            "imagePath" to storagePath
-        )
 
-        FirebaseFirestore.getInstance()
-            .collection("imageMetadata")
-            .add(metadata)
-            .addOnSuccessListener { onComplete() }
-            .addOnFailureListener { Log.e("Firestore", "Failed to save metadata: ${it.message}") }
+    suspend fun uploadImageAndGetUrl(uri: Uri): String {
+        Log.d("asdfasdfasdf", "Starting image upload to Firebase Storage")
+        try {
+            // 타임스탬프와 랜덤 UUID를 조합하여 고유한 파일명 생성
+            val timestamp = System.currentTimeMillis()
+            val fileName = "image_${timestamp}_${UUID.randomUUID()}.jpg"
+            val storageRef = FirebaseStorage.getInstance().reference
+                .child("media/images/$fileName")
+
+            Log.d("asdfasdfasdf", "Uploading to path: media/images/$fileName")
+
+            // 이미지 업로드
+            val uploadTask = storageRef.putFile(uri).await()
+            Log.d("asdfasdfasdf", "Upload completed successfully")
+
+            // 다운로드 URL 가져오기
+            val downloadUrl = storageRef.downloadUrl.await().toString()
+            Log.d("asdfasdfasdf", "Got download URL: $downloadUrl")
+
+            return downloadUrl
+        } catch (e: Exception) {
+            Log.e("asdfasdfasdf", "Error uploading image", e)
+            throw e
+        }
     }
-
 }
