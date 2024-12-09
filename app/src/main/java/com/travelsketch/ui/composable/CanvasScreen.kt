@@ -28,11 +28,13 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.zIndex
 import com.travelsketch.data.model.BoxData
 import com.travelsketch.data.model.BoxType
+import com.travelsketch.data.model.ViewMode
 import com.travelsketch.viewmodel.CanvasViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -58,7 +60,6 @@ fun CanvasScreen(
     var dragStartRelativeOffset by remember { mutableStateOf(Offset.Zero) }
     val selectedBoxPosition = remember { mutableStateOf<Offset?>(null) }
     val invalidateCanvasState = viewModel.invalidateCanvasState
-    var showMediaOnly by remember { mutableStateOf(false) } // State to toggle media-only mode
 
     val context = LocalContext.current
     val vibrator = remember {
@@ -77,10 +78,9 @@ fun CanvasScreen(
         }
     }
 
-    // 이미지 로드 효과
     LaunchedEffect(viewModel.boxes, invalidateCanvasState.value) {
         viewModel.boxes.forEach { box ->
-            if (box.type == BoxType.IMAGE.toString() &&
+            if ((box.type == BoxType.IMAGE.toString() || box.type == BoxType.RECEIPT.toString()) &&
                 !box.data.isNullOrEmpty() &&
                 box.data != "uploading" &&
                 box.data.startsWith("http")) {
@@ -117,19 +117,18 @@ fun CanvasScreen(
 
     LaunchedEffect(viewModel.boxes, invalidateCanvasState.value) {
         viewModel.boxes.forEach { box ->
-            if (box.type == BoxType.VIDEO.toString() &&
-                !box.data.isNullOrEmpty() &&
-                box.data.startsWith("http") &&
-                !localBitmaps.containsKey(box.data)) {
-
+            if (box.type == BoxType.VIDEO.toString() && !localBitmaps.containsKey(box.data) && box.data.startsWith("http")) {
                 val thumbnail = loadVideoThumbnail(context, box.data)
-                thumbnail?.let {
-                    localBitmaps[box.data] = it
+                if (thumbnail != null) {
+                    localBitmaps[box.data] = thumbnail
                     invalidateCanvasState.value = !invalidateCanvasState.value
+                } else {
+                    Log.e("CanvasScreen", "Failed to load thumbnail for video: ${box.data}")
                 }
             }
         }
     }
+
 
 
     fun screenToCanvas(screenPos: Offset): Offset {
@@ -158,18 +157,112 @@ fun CanvasScreen(
             Offset(box.boxX.toFloat(), box.boxY.toFloat())
         }
 
-        if (box.type == BoxType.VIDEO.toString() && !localBitmaps.containsKey(box.data)) {
-            val thumbnail = loadVideoThumbnail(context, box.data)
-            if (thumbnail != null) {
-                localBitmaps[box.data] = thumbnail
-                invalidateCanvasState.value = !invalidateCanvasState.value
-            } else {
-                Log.e("CanvasScreen", "Failed to load thumbnail for video: ${box.data}")
-            }
-        }
+
 
 
         when (box.type) {
+            BoxType.IMAGE.toString(), BoxType.RECEIPT.toString() -> {
+                val mediaUrl = box.data
+                Log.d("CanvasScreen", "Processing ${box.type} box: ${box.id}, URL: $mediaUrl")
+
+                val screenPos = canvasToScreen(Offset(boxX, boxY))
+                val scaledWidth = (box.width ?: 0) * canvasState.scale
+                val scaledHeight = (box.height ?: 0) * canvasState.scale
+
+                Log.d("CanvasScreen", "Drawing ${box.type} box at $screenPos with size ${scaledWidth}x${scaledHeight}")
+                Log.d("CanvasScreen", "Local bitmap available: ${localBitmaps[mediaUrl] != null}")
+
+                if (mediaUrl == "uploading") {
+                    // Draw uploading state
+                    drawRect(
+                        color = Color.Gray.copy(alpha = 0.3f),
+                        topLeft = screenPos,
+                        size = Size(scaledWidth, scaledHeight)
+                    )
+                    drawIntoCanvas { canvas ->
+                        val paint = Paint().apply {
+                            color = android.graphics.Color.BLACK
+                            textSize = 40f * canvasState.scale
+                            textAlign = Paint.Align.CENTER
+                        }
+                        canvas.nativeCanvas.drawText(
+                            "Uploading...",
+                            screenPos.x + scaledWidth / 2,
+                            screenPos.y + scaledHeight / 2,
+                            paint
+                        )
+                    }
+                } else {
+                    // Draw loaded bitmap or loading state
+                    localBitmaps[mediaUrl]?.let { bitmap ->
+                        try {
+                            Log.d("CanvasScreen", "Drawing bitmap at $screenPos")
+                            drawIntoCanvas { canvas ->
+                                val destinationRect = android.graphics.RectF(
+                                    screenPos.x,
+                                    screenPos.y,
+                                    screenPos.x + scaledWidth,
+                                    screenPos.y + scaledHeight
+                                )
+                                val paint = Paint().apply {
+                                    isAntiAlias = true
+                                    isFilterBitmap = true
+                                }
+                                canvas.nativeCanvas.drawBitmap(
+                                    bitmap,
+                                    null,
+                                    destinationRect,
+                                    paint
+                                )
+                                Log.d("CanvasScreen", "Successfully drew bitmap to canvas")
+
+                                // Draw border
+                                val borderPaint = Paint().apply {
+                                    style = Paint.Style.STROKE
+                                    strokeWidth = 2f * canvasState.scale
+                                    color = android.graphics.Color.BLACK
+                                }
+                                canvas.nativeCanvas.drawRect(
+                                    screenPos.x,
+                                    screenPos.y,
+                                    screenPos.x + scaledWidth,
+                                    screenPos.y + scaledHeight,
+                                    borderPaint
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Log.e("CanvasScreen", "Failed to draw bitmap", e)
+                            drawRect(
+                                color = Color.Red.copy(alpha = 0.3f),
+                                topLeft = screenPos,
+                                size = Size(scaledWidth, scaledHeight)
+                            )
+                        }
+                    } ?: run {
+                        // Show loading state when bitmap is not yet loaded
+                        Log.d("CanvasScreen", "Bitmap not found in cache, showing loading state")
+                        drawRect(
+                            color = Color.LightGray.copy(alpha = 0.3f),
+                            topLeft = screenPos,
+                            size = Size(scaledWidth, scaledHeight)
+                        )
+                        drawIntoCanvas { canvas ->
+                            val paint = Paint().apply {
+                                color = android.graphics.Color.BLACK
+                                textSize = 40f * canvasState.scale
+                                textAlign = Paint.Align.CENTER
+                            }
+                            canvas.nativeCanvas.drawText(
+                                "Loading...",
+                                screenPos.x + scaledWidth / 2,
+                                screenPos.y + scaledHeight / 2,
+                                paint
+                            )
+                        }
+                    }
+                }
+            }
+
             BoxType.IMAGE.toString() -> {
                 val imageUrl = box.data
                 Log.d("CanvasScreen", "Processing image box: ${box.id}, URL: $imageUrl")
@@ -194,7 +287,7 @@ fun CanvasScreen(
                             textAlign = Paint.Align.CENTER
                         }
                         canvas.nativeCanvas.drawText(
-                            "Uploading...",
+                            "IMAGE\nUploading...",
                             screenPos.x + scaledWidth / 2,
                             screenPos.y + scaledHeight / 2,
                             paint
@@ -254,7 +347,7 @@ fun CanvasScreen(
                     }
                 }
 
-                // 이미지 경계선 그리기
+                // 이미지 테두리 그리기
                 drawIntoCanvas { canvas ->
                     val borderPaint = Paint().apply {
                         style = Paint.Style.STROKE
@@ -279,7 +372,11 @@ fun CanvasScreen(
                 val scaledWidth = (box.width ?: 0) * canvasState.scale
                 val scaledHeight = (box.height ?: 0) * canvasState.scale
 
-                Log.d("CanvasScreen", "Drawing VIDEO box at $screenPos with size ${scaledWidth}x${scaledHeight}")
+
+                if (viewModel.selected.value == box) {
+                    // 비디오 플레이어 표시 시 썸네일 생략
+                    return
+                }
 
                 val bitmap = localBitmaps[videoUrl]
 
@@ -357,8 +454,6 @@ fun CanvasScreen(
         }
     }
 
-
-
     fun DrawScope.drawSelectionHandles(box: BoxData) {
         val (boxX, boxY) = if (box == viewModel.selected.value && isDragging && selectedBoxPosition.value != null) {
             selectedBoxPosition.value!!
@@ -382,18 +477,37 @@ fun CanvasScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier
-            .align(Alignment.TopStart)
-            .padding(16.dp)
-            .zIndex(1f) // Ensure the button is above other components
-        ) {
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp)
+                .zIndex(1f), // Ensure the buttons are above other components
+            horizontalArrangement = Arrangement.spacedBy(16.dp) // 버튼 간 간격 설정
+        )
+        {
             androidx.compose.material3.Button(onClick = {
-                showMediaOnly = !showMediaOnly // Toggle the mode
-                if (showMediaOnly) {
+                viewModel.currentViewMode.value =  ViewMode.ALL
+                if (viewModel.currentViewMode.value == ViewMode.ALL) {
                     viewModel.arrangeMediaBoxes() // 미디어 박스 정렬 및 위치 재배치
                 }
             }) {
-                Text(text = if (showMediaOnly) "Show All" else "Show Media Only")
+                Text(text = "All")
+            }
+            androidx.compose.material3.Button(onClick = {
+                viewModel.currentViewMode.value =  ViewMode.MEDIA_ONLY
+                if (viewModel.currentViewMode.value == ViewMode.MEDIA_ONLY) {
+                    viewModel.arrangeMediaBoxes() // 미디어 박스 정렬 및 위치 재배치
+                }
+            }) {
+                Text(text = "Media")
+            }
+            androidx.compose.material3.Button(onClick = {
+                viewModel.currentViewMode.value =  ViewMode.RECEIPTS_ONLY
+                if (viewModel.currentViewMode.value == ViewMode.RECEIPTS_ONLY) {
+                    viewModel.arrangeReceiptBoxes() // 미디어 박스 정렬 및 위치 재배치
+                }
+            }) {
+                Text(text = "Receipt")
             }
         }
         Canvas(
@@ -433,9 +547,11 @@ fun CanvasScreen(
                     detectDragGesturesAfterLongPress(
                         onDragStart = { offset ->
                             val canvasPos = screenToCanvas(offset)
-                            val boxesToShow = if (showMediaOnly) {
+                            val boxesToShow = if (viewModel.currentViewMode.value == ViewMode.MEDIA_ONLY) {
                                 viewModel.boxes.filter { it.type in listOf(BoxType.IMAGE.toString(), BoxType.VIDEO.toString()) }
-                            } else {
+                            } else if (viewModel.currentViewMode.value == ViewMode.RECEIPTS_ONLY){
+                                viewModel.arrangeReceiptBoxes()
+                            }else{
                                 viewModel.boxes
                             }
                             val hitBox = viewModel.boxes.findLast { box ->
@@ -563,11 +679,13 @@ fun CanvasScreen(
                     boundaryPaint
                 )
             }
-            val boxesToRender = if (showMediaOnly) {
-                viewModel.arrangeMediaBoxes()
-            } else {
-                viewModel.boxes
+
+            val boxesToRender = when (viewModel.currentViewMode.value) {
+                ViewMode.MEDIA_ONLY -> viewModel.arrangeMediaBoxes()
+                ViewMode.RECEIPTS_ONLY -> viewModel.arrangeReceiptBoxes()
+                ViewMode.ALL -> viewModel.boxes
             }
+
 
             boxesToRender.forEach { box ->
                 drawBox(box)
@@ -598,6 +716,25 @@ fun CanvasScreen(
                 color = Color.Black
             )
         }
+        if (viewModel.selected.value?.type == BoxType.VIDEO.toString()) {
+            val selectedBox = viewModel.selected.value!!
+            val screenPos = canvasToScreen(Offset(selectedBox.boxX.toFloat(), selectedBox.boxY.toFloat()))
+            val scaledWidth = (selectedBox.width ?: 0) * canvasState.scale
+            val scaledHeight = (selectedBox.height ?: 0) * canvasState.scale
+
+            val density = LocalDensity.current
+            val xDp = with(density) { screenPos.x.toDp() }
+            val yDp = with(density) { screenPos.y.toDp() }
+            val wDp = with(density) { scaledWidth.toDp() }
+            val hDp = with(density) { scaledHeight.toDp() }
+
+            VideoPlayer(
+                videoUrl = selectedBox.data,
+                modifier = Modifier
+                    .absoluteOffset(x = xDp, y = yDp)
+                    .size(wDp, hDp)
+            )
+        }
     }
 }
 
@@ -615,32 +752,51 @@ suspend fun loadBitmapFromNetwork(urlString: String): Bitmap? {
         }
     }
 }
+suspend fun loadVideoThumbnail(context: Context, videoUrl: String): Bitmap? = withContext(Dispatchers.IO) {
+    Log.d("asdf", "Attempting to load video thumbnail for: $videoUrl")
+    try {
+        val tempFile = File(context.cacheDir, "temp_video.mp4")
 
-fun loadVideoThumbnail(context: Context, videoUrl: String): Bitmap? {
-    return try {
-        // 1. Firebase Storage URL에서 비디오 다운로드
-        val uri = Uri.parse(videoUrl)
-        val tempFile = File(context.cacheDir, uri.toString())
+        if (tempFile.exists()) {
+            tempFile.delete()
+        }
 
         val connection = URL(videoUrl).openConnection() as HttpURLConnection
+        connection.connectTimeout = 10000
+        connection.readTimeout = 10000
+        connection.doInput = true
         connection.connect()
+
+        if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+            Log.e("asdf", "Failed to download video. Response code: ${connection.responseCode}")
+            return@withContext null
+        }
+
         connection.inputStream.use { input ->
             tempFile.outputStream().use { output ->
                 input.copyTo(output)
             }
         }
 
-        // 2. MediaMetadataRetriever로 로컬 파일 경로에서 썸네일 생성
+        if (tempFile.length() == 0L) {
+            Log.e("asdf", "Downloaded video file is empty.")
+            return@withContext null
+        }
+
         val retriever = MediaMetadataRetriever()
         retriever.setDataSource(tempFile.absolutePath)
         val thumbnail = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST)
         retriever.release()
 
+        if (thumbnail == null) {
+            Log.e("asdf", "Failed to retrieve thumbnail from video.")
+        } else {
+            Log.d("asdf", "Thumbnail successfully retrieved.")
+        }
+
         thumbnail
     } catch (e: Exception) {
-        Log.e("CanvasScreen", "Failed to load video thumbnail", e)
+        Log.e("asdf", "Exception while loading video thumbnail", e)
         null
     }
 }
-
-

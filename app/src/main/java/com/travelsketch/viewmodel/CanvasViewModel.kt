@@ -7,19 +7,20 @@ import android.net.Uri
 import android.content.Context
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
+import android.provider.MediaStore
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.storage.FirebaseStorage
 import com.travelsketch.data.dao.FirebaseClient
 import com.travelsketch.data.dao.FirebaseRepository
 import com.travelsketch.data.model.BoxData
 import com.travelsketch.data.model.BoxType
-import com.travelsketch.ui.composable.loadVideoThumbnail
+import com.travelsketch.data.model.ViewMode
+import com.travelsketch.data.util.ReceiptClassifier
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
@@ -32,12 +33,15 @@ class CanvasViewModel : ViewModel() {
     val canvasWidth = 10000f
     val canvasHeight = 8000f
 
+    private var receiptClassifier: ReceiptClassifier? = null
+
     var isLoading = mutableStateOf(false)
     var isUploading = mutableStateOf(false)
     var canvasId = mutableStateOf("")
     var isEditable = mutableStateOf(true)
     var boxes = mutableStateListOf<BoxData>()
     var selected = mutableStateOf<BoxData?>(null)
+    var currentViewMode = mutableStateOf(ViewMode.ALL)
 
     var isTextPlacementMode = mutableStateOf(false)
     var textToPlace = mutableStateOf("")
@@ -69,6 +73,8 @@ class CanvasViewModel : ViewModel() {
 
     fun setContext(context: Context) {
         this.context = context
+        receiptClassifier = ReceiptClassifier(context)
+        Log.d("asdfasdfasdf", "Receipt classifier initialized")
     }
 
     fun setScreenSize(width: Float, height: Float) {
@@ -77,7 +83,7 @@ class CanvasViewModel : ViewModel() {
     }
 
     fun initializeCanvas(id: String) {
-        Log.d("CanvasViewModel", "Initializing canvas with ID: $id")
+        Log.d("asdfasdfasdf", "Initializing canvas with ID: $id")
         canvasId.value = id
         viewAllBoxes(id)
     }
@@ -114,6 +120,12 @@ class CanvasViewModel : ViewModel() {
                 Log.e("asdfasdfasdf", "Failed to load image: $imageUrl", e)
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        receiptClassifier?.close()
+        receiptClassifier = null
     }
 
     fun loadVideo(videoUrl: String) {
@@ -226,11 +238,6 @@ class CanvasViewModel : ViewModel() {
                                 !boxData.data.isNullOrEmpty() &&
                                 boxData.data.startsWith("http")) {
                                 Log.d("CanvasViewModel", "Found video box, loading thumbnail for: ${boxData.data}")
-                                val thumbnail = loadVideoThumbnail(context!!, boxData.data)
-                                thumbnail?.let {
-                                    bitmaps[boxData.data] = it
-                                    invalidateCanvasState.value = !invalidateCanvasState.value
-                                }
                             }
                         }
                     }
@@ -250,7 +257,7 @@ class CanvasViewModel : ViewModel() {
 
         // Step 1: 미디어 박스 필터링
         val mediaBoxes = boxes.filter {
-            it.type == BoxType.IMAGE.toString() || it.type == BoxType.VIDEO.toString()
+            it.type == BoxType.IMAGE.toString() || it.type == BoxType.VIDEO.toString() 
         }.sortedBy { it.id }
 
         // Step 2: 시작 위치와 간격 설정
@@ -289,6 +296,116 @@ class CanvasViewModel : ViewModel() {
         return arrangedBoxes
     }
 
+    fun arrangeReceiptBoxes(): List<BoxData> {
+        val arrangedBoxes = mutableListOf<BoxData>()
+
+        // Step 1: 미디어 박스 필터링
+        val mediaBoxes = boxes.filter {
+            it.type == BoxType.RECEIPT.toString()
+        }.sortedBy { it.id }
+
+        // Step 2: 시작 위치와 간격 설정
+        val startX = 50
+        val startY = 50
+        val spacing = 20
+        val maxCanvasWidth = canvasWidth.toInt()
+
+        var currentX = startX
+        var currentY = startY
+        var rowHeight = 0
+
+        mediaBoxes.forEach { box ->
+            // 캔버스 폭을 초과하면 다음 행으로 이동
+            if (currentX + (box.width ?: 0) + spacing > maxCanvasWidth) {
+                currentX = startX
+                currentY += rowHeight + spacing
+                rowHeight = 0
+            }
+
+            // 새 위치로 배치된 박스 데이터 생성
+            arrangedBoxes.add(
+                box.copy(
+                    boxX = currentX,
+                    boxY = currentY
+                )
+            )
+
+            // X 좌표 업데이트
+            currentX += (box.width ?: 0) + spacing
+
+            // 행 높이 업데이트
+            rowHeight = maxOf(rowHeight, box.height ?: 0)
+        }
+
+        return arrangedBoxes
+    }
+
+    private fun createImageBox(canvasX: Float, canvasY: Float) {
+        viewModelScope.launch {
+            val imageUri = imageToPlace.value ?: return@launch
+            val uri = Uri.parse(imageUri)
+
+            var tempBox: BoxData? = null
+            try {
+                isUploading.value = true
+                Log.d("asdfasdfasdf", "Starting image box creation process")
+
+                // 이미지 분류 수행
+                val bitmap = MediaStore.Images.Media.getBitmap(context?.contentResolver, uri)
+                val isReceipt = receiptClassifier?.classifyImage(bitmap) ?: false
+                Log.d("asdfasdfasdf", "Image classification result - Is Receipt: $isReceipt")
+
+                val (width, height) = calculateImageDimensions(context!!, uri)
+                val boxId = UUID.randomUUID().toString()
+
+                // BoxType을 분류 결과에 따라 설정
+                val boxType = if (isReceipt) BoxType.RECEIPT else BoxType.IMAGE
+                Log.d("asdfasdfasdf", "Setting box type as: ${boxType.name}")
+
+                tempBox = BoxData(
+                    id = boxId,
+                    boxX = (canvasX - width / 2f).toInt(),
+                    boxY = (canvasY - height / 2f).toInt(),
+                    width = width,
+                    height = height,
+                    type = boxType.toString(),
+                    data = "uploading"
+                )
+
+                // Firebase Storage에 업로드
+                val downloadUrl = FirebaseRepository().uploadImageAndGetUrl(uri)
+                Log.d("asdfasdfasdf", "Successfully uploaded to Firebase. URL: $downloadUrl")
+
+                val finalBox = tempBox.copy(data = downloadUrl)
+                val saveSuccess = FirebaseClient.writeBoxData(
+                    canvasId.value,
+                    boxId,
+                    finalBox
+                )
+
+                if (!saveSuccess) {
+                    throw Exception("Failed to save box data to database")
+                }
+
+                boxes.add(finalBox)
+                boxIdMap[finalBox.id] = finalBox
+                loadImage(downloadUrl)
+
+            } catch (e: Exception) {
+                Log.e("asdfasdfasdf", "Error in createImageBox", e)
+                tempBox?.let {
+                    boxes.remove(it)
+                    boxIdMap.remove(it.id)
+                }
+            } finally {
+                isUploading.value = false
+                isImagePlacementMode.value = false
+                imageToPlace.value = null
+            }
+        }
+    }
+
+    // ... [나머지 기존 메소드들은 동일하게 유지]
 
     fun toggleIsEditable() {
         isEditable.value = !isEditable.value
@@ -325,8 +442,8 @@ class CanvasViewModel : ViewModel() {
             createTextBox(canvasX, canvasY)
         } else if (isImagePlacementMode.value) {
             createImageBox(canvasX, canvasY)
-        } else if (isVideoPlacementMode.value){
-            createVideoBox(canvasX,canvasY)
+        } else if (isVideoPlacementMode.value) {
+            createVideoBox(canvasX, canvasY)
         }
     }
 
@@ -368,73 +485,25 @@ class CanvasViewModel : ViewModel() {
             if (box.type == BoxType.IMAGE.toString() && !box.data.isNullOrEmpty() && box.data != "uploading") {
                 loadImage(box.data)
             }
-            if (box.type == BoxType.VIDEO.toString() && !box.data.isNullOrEmpty() && box.data != "uploading") {
-                loadVideo(box.data)
-            }
         }
     }
 
-    private fun createImageBox(canvasX: Float, canvasY: Float) {
-        viewModelScope.launch {
-            val imageUri = imageToPlace.value ?: return@launch
-            val uri = Uri.parse(imageUri)
 
-            var tempBox: BoxData? = null
+    private suspend fun uploadImageToFirebase(uri: Uri): String {
+        return withContext(Dispatchers.IO) {
             try {
-                isUploading.value = true
-                Log.d("asdfasdfasdf", "Starting image box creation process")
+                val timestamp = System.currentTimeMillis()
+                val imageFileName = "image_${timestamp}.jpg"
+                val storageRef = FirebaseStorage.getInstance().reference
+                    .child("media/images/$imageFileName")
 
-                val (width, height) = calculateImageDimensions(context!!, uri)
-
-                // 새 박스 ID 생성
-                val boxId = UUID.randomUUID().toString()
-
-                // 임시 박스 생성
-                tempBox = BoxData(
-                    id = boxId,  // ID 명시적 설정
-                    boxX = (canvasX - width / 2f).toInt(),
-                    boxY = (canvasY - height / 2f).toInt(),
-                    width = width,
-                    height = height,
-                    type = BoxType.IMAGE.toString(),
-                    data = "uploading"
-                )
-
-                // Firebase Storage에 업로드 및 URL 받기
-                val downloadUrl = FirebaseRepository().uploadImageAndGetUrl(uri)
-                Log.d("asdfasdfasdf", "Successfully got download URL: $downloadUrl")
-
-                // 최종 박스 데이터 생성
-                val finalBox = tempBox.copy(data = downloadUrl)
-
-                // Firebase Database에 저장
-                val saveSuccess = FirebaseClient.writeBoxData(
-                    canvasId.value,
-                    boxId,
-                    finalBox
-                )
-
-                if (!saveSuccess) {
-                    throw Exception("Failed to save box data to database")
-                }
-
-                // 메모리 상의 박스 업데이트
-                boxes.add(finalBox)
-                boxIdMap[finalBox.id] = finalBox
-
-                // 이미지 즉시 로딩
-                loadImage(downloadUrl)
-
+                context?.contentResolver?.openInputStream(uri)?.use { inputStream ->
+                    storageRef.putStream(inputStream).await()
+                    storageRef.downloadUrl.await().toString()
+                } ?: throw Exception("Failed to open input stream")
             } catch (e: Exception) {
-                Log.e("asdfasdfasdf", "Error in createImageBox", e)
-                tempBox?.let {
-                    boxes.remove(it)
-                    boxIdMap.remove(it.id)
-                }
-            } finally {
-                isUploading.value = false
-                isImagePlacementMode.value = false
-                imageToPlace.value = null
+                Log.e("CanvasViewModel", "Failed to upload image to Firebase", e)
+                throw e
             }
         }
     }
@@ -442,15 +511,15 @@ class CanvasViewModel : ViewModel() {
     private fun createVideoBox(canvasX: Float, canvasY: Float) {
         viewModelScope.launch {
             val videoUri = videoToPlace.value ?: return@launch
-            Log.d("asdf", "Creating video box for URI: $videoUri")
             val uri = Uri.parse(videoUri)
             var tempBox: BoxData? = null
 
             try {
                 isUploading.value = true
-                Log.d("asdfasdfasdf", "Starting video box creation process")
+                Log.d("asdfasdfasdf", "Starting video box creation")
 
-                val (width, height) = calculateVideoDimensions(context!!, uri)
+                val width = 600
+                val height = 400
                 val boxId = UUID.randomUUID().toString()
 
                 tempBox = BoxData(
@@ -460,31 +529,41 @@ class CanvasViewModel : ViewModel() {
                     width = width,
                     height = height,
                     type = BoxType.VIDEO.toString(),
-                    data = "uploading"
+                    data = videoUri
                 )
+                boxes.add(tempBox)
 
-                val downloadUrl = FirebaseRepository().uploadVideoAndGetUrl(uri)
-                Log.d("asdfasdfasdf", "Successfully got download URL: $downloadUrl")
-                val finalBox = tempBox.copy(data = downloadUrl)
 
-                val saveSuccess = FirebaseClient.writeBoxData(
-                    canvasId.value,
-                    boxId,
-                    finalBox
-                )
+                // Upload video to Firebase Storage
+                val timestamp = System.currentTimeMillis()
+                val videoFileName = "video_${timestamp}.mp4"
+                val storageRef = FirebaseStorage.getInstance().reference
+                    .child("media/videos/$videoFileName")
 
-                if (!saveSuccess) {
-                    throw Exception("Failed to save box data to database")
+                context?.contentResolver?.openInputStream(uri)?.use { inputStream ->
+                    val uploadTask = storageRef.putStream(inputStream)
+                    uploadTask.await()
+
+                    val downloadUrl = storageRef.downloadUrl.await().toString()
+
+                    // Update BoxData with Firebase URL
+                    val finalBox = tempBox.copy(data = downloadUrl)
+                    val index = boxes.indexOf(tempBox)
+                    if (index != -1) {
+                        boxes[index] = finalBox
+                    }
+
+                    // Save to Firebase Database
+                    FirebaseClient.writeBoxData(
+                        canvasId.value,
+                        finalBox.id,
+                        finalBox
+                    )
+                    invalidateCanvasState.value = !invalidateCanvasState.value
+
                 }
-                // 메모리 상의 박스 업데이트
-                boxes.add(finalBox)
-                boxIdMap[finalBox.id] = finalBox
-
-                loadVideo(downloadUrl)
-
-
             } catch (e: Exception) {
-                Log.e("CanvasViewModel", "Error creating video box", e)
+                Log.e("asdf", "Error creating video box", e)
                 boxes.removeIf { it.data == videoUri }
             } finally {
                 isUploading.value = false
@@ -549,15 +628,17 @@ class CanvasViewModel : ViewModel() {
             }
         }
     }
+
     fun delete() {
         viewModelScope.launch {
             selected.value?.let { box ->
                 try {
-                    if (box.type == BoxType.IMAGE.toString() && box.data.startsWith("https")) {
-                        try {
-                            val storage = FirebaseStorage.getInstance()
+                    if ((box.type == BoxType.IMAGE.toString() || box.type == BoxType.RECEIPT.toString()) &&
+                        box.data.startsWith("https")) {
+                        try {val storage = FirebaseStorage.getInstance()
                             val imageRef = storage.getReferenceFromUrl(box.data)
                             imageRef.delete().await()
+                            Log.d("asdfasdfasdf", "Successfully deleted image from storage")
                         } catch (e: Exception) {
                             Log.e("CanvasViewModel", "Failed to delete image from storage", e)
                         }

@@ -102,6 +102,9 @@ dependencies {
     implementation ("com.google.firebase:firebase-messaging:23.1.2") // fcm push 알림
     implementation ("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.0") // view model lifecycle
 
+    implementation("org.tensorflow:tensorflow-lite:2.8.0")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.0")
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
