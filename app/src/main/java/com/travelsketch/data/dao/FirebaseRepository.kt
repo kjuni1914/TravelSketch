@@ -274,14 +274,7 @@ class FirebaseRepository {
             title = mapCanvasTitle
         )
     }
-    fun uploadPhotoToFirebase(filePath: String, onSuccess: (String) -> Unit) {
-        val file = Uri.fromFile(File(filePath))
-        val storageRef = FirebaseStorage.getInstance().reference.child("images/${file.lastPathSegment}")
 
-        storageRef.putFile(file)
-            .addOnSuccessListener { onSuccess(storageRef.path) }
-            .addOnFailureListener { Log.e("Firebase Storage", "Upload failed: ${it.message}") }
-    }
 
     suspend fun uploadImageAndGetUrl(uri: Uri): String {
         Log.d("asdfasdfasdf", "Starting image upload to Firebase Storage")
@@ -308,4 +301,30 @@ class FirebaseRepository {
             throw e
         }
     }
+    suspend fun uploadVideoAndGetUrl(uri: Uri): String {
+        Log.d("asdf", "Starting video upload to Firebase Storage")
+        return try {
+            // 타임스탬프와 랜덤 UUID를 조합하여 고유한 파일명 생성
+            val timestamp = System.currentTimeMillis()
+            val fileName = "video_${timestamp}_${UUID.randomUUID()}.mp4"
+            val storageRef = FirebaseStorage.getInstance().reference
+                .child("media/videos/$fileName")
+
+            Log.d("FirebaseRepository", "Uploading to path: media/videos/$fileName")
+
+            // 동영상 업로드
+            val uploadTask = storageRef.putFile(uri).await()
+            Log.d("FirebaseRepository", "Upload completed successfully")
+
+            // 다운로드 URL 가져오기
+            val downloadUrl = storageRef.downloadUrl.await().toString()
+            Log.d("FirebaseRepository", "Got download URL: $downloadUrl")
+
+            downloadUrl
+        } catch (e: Exception) {
+            Log.e("FirebaseRepository", "Error uploading video", e)
+            throw e
+        }
+    }
+
 }
