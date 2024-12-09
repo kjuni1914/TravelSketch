@@ -1,5 +1,6 @@
 package com.travelsketch.ui.composable
 
+import CanvasViewModel
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,7 +17,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.travelsketch.R
 import com.travelsketch.data.model.BoxType
-import com.travelsketch.viewmodel.CanvasViewModel
 
 @Composable
 fun Editor(

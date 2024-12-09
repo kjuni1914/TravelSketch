@@ -4,7 +4,8 @@ enum class BoxType(val type: String) {
     IMAGE("IMAGE"),
     VIDEO("VIDEO"),
     TEXT("TEXT"),
-    RECORD("RECORD");
+    RECORD("RECORD"),
+    RECEIPT("RECEIPT");
 
     companion object {
         fun fromString(type: String): BoxType {
@@ -13,6 +14,7 @@ enum class BoxType(val type: String) {
                 "VIDEO" -> VIDEO
                 "RECORD" -> RECORD
                 "TEXT" -> TEXT
+                "RECEIPT" -> RECEIPT
                 else -> throw IllegalArgumentException("Unknown type: $type")
             }
         }

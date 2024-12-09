@@ -1,5 +1,6 @@
 package com.travelsketch.ui.activity
 
+import CanvasViewModel
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -23,7 +24,6 @@ import com.travelsketch.ui.composable.StatusBar
 import com.travelsketch.ui.composable.TextInputDialog
 import com.travelsketch.ui.composable.VideoSourceDialog
 import com.travelsketch.ui.layout.CanvasEditLayout
-import com.travelsketch.viewmodel.CanvasViewModel
 import java.io.File
 
 class CanvasActivity : ComponentActivity() {

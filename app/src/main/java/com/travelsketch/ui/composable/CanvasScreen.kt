@@ -1,5 +1,6 @@
 package com.travelsketch.ui.composable
 
+import CanvasViewModel
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -32,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.travelsketch.data.model.BoxData
 import com.travelsketch.data.model.BoxType
-import com.travelsketch.viewmodel.CanvasViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -74,10 +74,9 @@ fun CanvasScreen(
         }
     }
 
-    // 이미지 로드 효과
     LaunchedEffect(viewModel.boxes, invalidateCanvasState.value) {
         viewModel.boxes.forEach { box ->
-            if (box.type == BoxType.IMAGE.toString() &&
+            if ((box.type == BoxType.IMAGE.toString() || box.type == BoxType.RECEIPT.toString()) &&
                 !box.data.isNullOrEmpty() &&
                 box.data != "uploading" &&
                 box.data.startsWith("http")) {
@@ -139,6 +138,108 @@ fun CanvasScreen(
         }
 
         when (box.type) {
+            BoxType.IMAGE.toString(), BoxType.RECEIPT.toString() -> {
+                val mediaUrl = box.data
+                Log.d("CanvasScreen", "Processing ${box.type} box: ${box.id}, URL: $mediaUrl")
+
+                val screenPos = canvasToScreen(Offset(boxX, boxY))
+                val scaledWidth = (box.width ?: 0) * canvasState.scale
+                val scaledHeight = (box.height ?: 0) * canvasState.scale
+
+                Log.d("CanvasScreen", "Drawing ${box.type} box at $screenPos with size ${scaledWidth}x${scaledHeight}")
+                Log.d("CanvasScreen", "Local bitmap available: ${localBitmaps[mediaUrl] != null}")
+
+                if (mediaUrl == "uploading") {
+                    // Draw uploading state
+                    drawRect(
+                        color = Color.Gray.copy(alpha = 0.3f),
+                        topLeft = screenPos,
+                        size = Size(scaledWidth, scaledHeight)
+                    )
+                    drawIntoCanvas { canvas ->
+                        val paint = Paint().apply {
+                            color = android.graphics.Color.BLACK
+                            textSize = 40f * canvasState.scale
+                            textAlign = Paint.Align.CENTER
+                        }
+                        canvas.nativeCanvas.drawText(
+                            "Uploading...",
+                            screenPos.x + scaledWidth / 2,
+                            screenPos.y + scaledHeight / 2,
+                            paint
+                        )
+                    }
+                } else {
+                    // Draw loaded bitmap or loading state
+                    localBitmaps[mediaUrl]?.let { bitmap ->
+                        try {
+                            Log.d("CanvasScreen", "Drawing bitmap at $screenPos")
+                            drawIntoCanvas { canvas ->
+                                val destinationRect = android.graphics.RectF(
+                                    screenPos.x,
+                                    screenPos.y,
+                                    screenPos.x + scaledWidth,
+                                    screenPos.y + scaledHeight
+                                )
+                                val paint = Paint().apply {
+                                    isAntiAlias = true
+                                    isFilterBitmap = true
+                                }
+                                canvas.nativeCanvas.drawBitmap(
+                                    bitmap,
+                                    null,
+                                    destinationRect,
+                                    paint
+                                )
+                                Log.d("CanvasScreen", "Successfully drew bitmap to canvas")
+
+                                // Draw border
+                                val borderPaint = Paint().apply {
+                                    style = Paint.Style.STROKE
+                                    strokeWidth = 2f * canvasState.scale
+                                    color = android.graphics.Color.BLACK
+                                }
+                                canvas.nativeCanvas.drawRect(
+                                    screenPos.x,
+                                    screenPos.y,
+                                    screenPos.x + scaledWidth,
+                                    screenPos.y + scaledHeight,
+                                    borderPaint
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Log.e("CanvasScreen", "Failed to draw bitmap", e)
+                            drawRect(
+                                color = Color.Red.copy(alpha = 0.3f),
+                                topLeft = screenPos,
+                                size = Size(scaledWidth, scaledHeight)
+                            )
+                        }
+                    } ?: run {
+                        // Show loading state when bitmap is not yet loaded
+                        Log.d("CanvasScreen", "Bitmap not found in cache, showing loading state")
+                        drawRect(
+                            color = Color.LightGray.copy(alpha = 0.3f),
+                            topLeft = screenPos,
+                            size = Size(scaledWidth, scaledHeight)
+                        )
+                        drawIntoCanvas { canvas ->
+                            val paint = Paint().apply {
+                                color = android.graphics.Color.BLACK
+                                textSize = 40f * canvasState.scale
+                                textAlign = Paint.Align.CENTER
+                            }
+                            canvas.nativeCanvas.drawText(
+                                "Loading...",
+                                screenPos.x + scaledWidth / 2,
+                                screenPos.y + scaledHeight / 2,
+                                paint
+                            )
+                        }
+                    }
+                }
+            }
+
             BoxType.IMAGE.toString() -> {
                 val imageUrl = box.data
                 Log.d("CanvasScreen", "Processing image box: ${box.id}, URL: $imageUrl")
@@ -163,7 +264,7 @@ fun CanvasScreen(
                             textAlign = Paint.Align.CENTER
                         }
                         canvas.nativeCanvas.drawText(
-                            "Uploading...",
+                            "IMAGE\nUploading...",
                             screenPos.x + scaledWidth / 2,
                             screenPos.y + scaledHeight / 2,
                             paint
@@ -223,7 +324,7 @@ fun CanvasScreen(
                     }
                 }
 
-                // 이미지 경계선 그리기
+                // 이미지 테두리 그리기
                 drawIntoCanvas { canvas ->
                     val borderPaint = Paint().apply {
                         style = Paint.Style.STROKE
@@ -261,8 +362,6 @@ fun CanvasScreen(
             }
         }
     }
-
-
 
     fun DrawScope.drawSelectionHandles(box: BoxData) {
         val (boxX, boxY) = if (box == viewModel.selected.value && isDragging && selectedBoxPosition.value != null) {
