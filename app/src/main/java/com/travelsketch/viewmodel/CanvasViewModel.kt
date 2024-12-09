@@ -16,6 +16,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.storage.FirebaseStorage
 import com.travelsketch.data.dao.FirebaseClient
+import com.travelsketch.data.dao.FirebaseRepository
 import com.travelsketch.data.model.BoxData
 import com.travelsketch.data.model.BoxType
 import com.travelsketch.ui.composable.loadVideoThumbnail
@@ -23,6 +24,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.UUID
 
 class CanvasViewModel : ViewModel() {
     val canvasWidth = 10000f
@@ -78,44 +82,82 @@ class CanvasViewModel : ViewModel() {
         viewAllBoxes(id)
     }
 
+    fun loadImage(imageUrl: String) {
+        if (imageUrl.isEmpty() || imageUrl == "uploading" || bitmaps.containsKey(imageUrl)) return
+
+        Log.d("asdfasdfasdf", "Starting image load for URL: $imageUrl")
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val bitmap = withContext(Dispatchers.IO) {
+                    Log.d("asdfasdfasdf", "Attempting to connect to URL: $imageUrl")
+                    val url = URL(imageUrl)
+                    val connection = url.openConnection() as HttpURLConnection
+                    connection.connectTimeout = 10000
+                    connection.readTimeout = 10000
+                    connection.doInput = true
+                    connection.connect()
+
+                    Log.d("asdfasdfasdf", "Connection established, decoding bitmap")
+                    BitmapFactory.decodeStream(connection.inputStream)
+                }
+
+                bitmap?.let {
+                    Log.d("asdfasdfasdf", "Bitmap successfully decoded")
+                    withContext(Dispatchers.Main) {
+                        bitmaps[imageUrl] = it
+                        invalidateCanvasState.value = !invalidateCanvasState.value
+                        Log.d("asdfasdfasdf", "Bitmap stored and canvas invalidated")
+                    }
+                } ?: Log.e("asdfasdfasdf", "Failed to decode bitmap")
+
+            } catch (e: Exception) {
+                Log.e("asdfasdfasdf", "Failed to load image: $imageUrl", e)
+            }
+        }
+    }
+
     private var boxIdMap = mutableMapOf<String, BoxData>()
 
 
     private fun viewAllBoxes(canvasId: String) {
-        Log.d("CanvasViewModel", "Starting viewAllBoxes for canvas: $canvasId")
+        Log.d("asdfasdfasdf", "Starting viewAllBoxes for canvasId: $canvasId")
         viewModelScope.launch {
             isLoading.value = true
             try {
-                Log.d("CanvasViewModel", "Requesting box data from Firebase")
+                Log.d("asdfasdfasdf", "Reading box data from Firebase")
                 val snapshot = FirebaseClient.readAllBoxData(canvasId)
-                Log.d("CanvasViewModel", "Received ${snapshot?.size ?: 0} boxes from Firebase")
+                Log.d("asdfasdfasdf", "Received data from Firebase: $snapshot")
 
                 withContext(Dispatchers.Main) {
                     boxes.clear()
                     boxIdMap.clear()
-                    Log.d("CanvasViewModel", "Cleared existing boxes")
+                    Log.d("asdfasdfasdf", "Cleared existing boxes")
 
                     snapshot?.forEach { boxData ->
-                        if (boxData != null) {
-                            Log.d("CanvasViewModel", "Processing box: ${boxData.id}, type: ${boxData.type}, data: ${boxData.data}")
-                            boxes.add(boxData)
-                            boxIdMap[boxData.id] = boxData
+                        Log.d("asdfasdfasdf", "Processing box: ${boxData.id}")
+                        Log.d("asdfasdfasdf", "Box data: $boxData")
+                        boxes.add(boxData)
+                        boxIdMap[boxData.id] = boxData
 
-                            if (boxData.type == BoxType.IMAGE.toString() &&
-                                !boxData.data.isNullOrEmpty() &&
-                                boxData.data != "uploading") {
-                                Log.d("CanvasViewModel", "Found image box, initiating loading for: ${boxData.data}")
-                                loadImage(boxData.data)
+                        if (boxData.type == BoxType.IMAGE.toString()) {
+                            Log.d("asdfasdfasdf", "Found image box with data: ${boxData.data}")
+                            if (!boxData.data.isNullOrEmpty() && boxData.data != "uploading") {
+                                Log.d("asdfasdfasdf", "Starting image load for: ${boxData.data}")
+                                if (boxData.data.startsWith("http")) {
+                                    loadImage(boxData.data)
+                                } else {
+                                    Log.d("asdfasdfasdf", "Invalid image URL format: ${boxData.data}")
+                                }
+                            } else {
+                                Log.d("asdfasdfasdf", "Skipping image load - data empty or uploading")
                             }
                         }
                     }
-                    Log.d("CanvasViewModel", "Finished processing all boxes. Total count: ${boxes.size}")
                 }
             } catch (e: Exception) {
-                Log.e("CanvasViewModel", "Error loading boxes", e)
+                Log.e("asdfasdfasdf", "Error in viewAllBoxes", e)
             } finally {
                 isLoading.value = false
-                Log.d("CanvasViewModel", "viewAllBoxes completed")
             }
         }
     }
@@ -211,49 +253,6 @@ class CanvasViewModel : ViewModel() {
 
     private val loadingImages = mutableStateMapOf<String, Boolean>()
 
-    private fun loadImage(imageUrl: String) {
-        Log.d("CanvasViewModel", "Starting loadImage for URL: $imageUrl")
-        if (imageUrl.isEmpty() || imageUrl == "uploading" || bitmaps.containsKey(imageUrl)) {
-            Log.d("CanvasViewModel", "Skipping loadImage: isEmpty=${imageUrl.isEmpty()}, isUploading=${imageUrl == "uploading"}, alreadyLoaded=${bitmaps.containsKey(imageUrl)}")
-            return
-        }
-
-        viewModelScope.launch(Dispatchers.IO) {
-            Log.d("CanvasViewModel", "Starting image loading coroutine for: $imageUrl")
-            loadingImages[imageUrl] = true
-            try {
-                val bitmap = if (imageUrl.startsWith("http")) {
-                    Log.d("CanvasViewModel", "Loading remote image from: $imageUrl")
-                    val url = java.net.URL(imageUrl)
-                    val connection = url.openConnection()
-                    connection.connect()
-                    val inputStream = connection.getInputStream()
-                    BitmapFactory.decodeStream(inputStream)
-                } else {
-                    Log.d("CanvasViewModel", "Loading local image from: $imageUrl")
-                    context?.let { ctx ->
-                        val uri = Uri.parse(imageUrl)
-                        ctx.contentResolver.openInputStream(uri)?.use { input ->
-                            BitmapFactory.decodeStream(input)
-                        }
-                    }
-                }
-
-                withContext(Dispatchers.Main) {
-                    bitmap?.let {
-                        Log.d("CanvasViewModel", "Successfully loaded bitmap for: $imageUrl")
-                        bitmaps[imageUrl] = it
-                        invalidateCanvasState.value = !invalidateCanvasState.value
-                    } ?: Log.e("CanvasViewModel", "Failed to decode bitmap for: $imageUrl")
-                }
-            } catch (e: Exception) {
-                Log.e("CanvasViewModel", "Failed to load image: $imageUrl", e)
-            } finally {
-                loadingImages[imageUrl] = false
-            }
-        }
-    }
-
     private fun createTextBox(canvasX: Float, canvasY: Float) {
         val text = textToPlace.value
         val paint = defaultBrush.value
@@ -285,92 +284,94 @@ class CanvasViewModel : ViewModel() {
         }
     }
 
+    private fun reloadAllImages() {
+        boxes.forEach { box ->
+            if (box.type == BoxType.IMAGE.toString() && !box.data.isNullOrEmpty() && box.data != "uploading") {
+                loadImage(box.data)
+            }
+        }
+    }
+
     private fun createImageBox(canvasX: Float, canvasY: Float) {
         viewModelScope.launch {
             val imageUri = imageToPlace.value ?: return@launch
             val uri = Uri.parse(imageUri)
 
+            var tempBox: BoxData? = null
             try {
                 isUploading.value = true
-                Log.d("CanvasViewModel", "Starting image upload for URI: $imageUri")
+                Log.d("asdfasdfasdf", "Starting image box creation process")
 
                 val (width, height) = calculateImageDimensions(context!!, uri)
-                val centeredX = canvasX - width / 2f
-                val centeredY = canvasY - height / 2f
+
+                // 새 박스 ID 생성
+                val boxId = UUID.randomUUID().toString()
 
                 // 임시 박스 생성
-                val tempBox = BoxData(
-                    boxX = centeredX.toInt(),
-                    boxY = centeredY.toInt(),
+                tempBox = BoxData(
+                    id = boxId,  // ID 명시적 설정
+                    boxX = (canvasX - width / 2f).toInt(),
+                    boxY = (canvasY - height / 2f).toInt(),
                     width = width,
                     height = height,
                     type = BoxType.IMAGE.toString(),
                     data = "uploading"
                 )
 
-                // 임시 박스 추가
-                boxes.add(tempBox)
-                boxIdMap[tempBox.id] = tempBox
+                // Firebase Storage에 업로드 및 URL 받기
+                val downloadUrl = FirebaseRepository().uploadImageAndGetUrl(uri)
+                Log.d("asdfasdfasdf", "Successfully got download URL: $downloadUrl")
 
-                // Firebase Storage에 업로드
+                // 최종 박스 데이터 생성
+                val finalBox = tempBox.copy(data = downloadUrl)
+
+                // Firebase Database에 저장
+                val saveSuccess = FirebaseClient.writeBoxData(
+                    canvasId.value,
+                    boxId,
+                    finalBox
+                )
+
+                if (!saveSuccess) {
+                    throw Exception("Failed to save box data to database")
+                }
+
+                // 메모리 상의 박스 업데이트
+                boxes.add(finalBox)
+                boxIdMap[finalBox.id] = finalBox
+
+                // 이미지 즉시 로딩
+                loadImage(downloadUrl)
+
+            } catch (e: Exception) {
+                Log.e("asdfasdfasdf", "Error in createImageBox", e)
+                tempBox?.let {
+                    boxes.remove(it)
+                    boxIdMap.remove(it.id)
+                }
+            } finally {
+                isUploading.value = false
+                isImagePlacementMode.value = false
+                imageToPlace.value = null
+            }
+        }
+    }
+
+    private suspend fun uploadImageToFirebase(uri: Uri): String {
+        return withContext(Dispatchers.IO) {
+            try {
                 val timestamp = System.currentTimeMillis()
                 val imageFileName = "image_${timestamp}.jpg"
                 val storageRef = FirebaseStorage.getInstance().reference
                     .child("media/images/$imageFileName")
 
-                try {
-                    Log.d("CanvasViewModel", "Uploading image to Firebase Storage...")
-                    val downloadUrl = context?.contentResolver?.openInputStream(uri)?.use { inputStream ->
-                        val uploadTask = storageRef.putStream(inputStream)
-                        uploadTask.await() // 업로드 완료 대기
-
-                        Log.d("CanvasViewModel", "Image upload successful, getting download URL")
-                        val url = storageRef.downloadUrl.await().toString()
-                        Log.d("CanvasViewModel", "Got download URL: $url")
-                        url
-                    } ?: throw Exception("Failed to get input stream")
-
-                    // 최종 박스 데이터 업데이트
-                    val finalBox = tempBox.copy(data = downloadUrl)
-                    Log.d("CanvasViewModel", "Updating box data with URL in boxes list")
-
-                    val index = boxes.indexOf(tempBox)
-                    if (index != -1) {
-                        boxes[index] = finalBox
-                        boxIdMap[finalBox.id] = finalBox
-                    }
-
-                    // Firebase Database에 저장
-                    Log.d("CanvasViewModel", "Saving box data to Firebase Database...")
-                    val saveResult = FirebaseClient.writeBoxData(
-                        canvasId.value,
-                        finalBox.id,
-                        finalBox
-                    )
-
-                    if (saveResult) {
-                        Log.d("CanvasViewModel", "Successfully saved box data to Firebase")
-                        // 이미지 즉시 로드 시도
-                        loadImage(downloadUrl)
-                    } else {
-                        Log.e("CanvasViewModel", "Failed to save box data to Firebase")
-                    }
-
-                } catch (e: Exception) {
-                    Log.e("CanvasViewModel", "Upload failed", e)
-                    // 실패 시 임시 박스 제거
-                    boxes.remove(tempBox)
-                    boxIdMap.remove(tempBox.id)
-                    throw e
-                }
-
+                context?.contentResolver?.openInputStream(uri)?.use { inputStream ->
+                    storageRef.putStream(inputStream).await()
+                    storageRef.downloadUrl.await().toString()
+                } ?: throw Exception("Failed to open input stream")
             } catch (e: Exception) {
-                Log.e("CanvasViewModel", "Error creating image box", e)
-                boxes.removeIf { it.data == "uploading" }
-            } finally {
-                isUploading.value = false
-                isImagePlacementMode.value = false
-                imageToPlace.value = null
+                Log.e("CanvasViewModel", "Failed to upload image to Firebase", e)
+                throw e
             }
         }
     }
@@ -536,5 +537,9 @@ class CanvasViewModel : ViewModel() {
         isImagePlacementMode.value = false
         textToPlace.value = ""
         imageToPlace.value = null
+    }
+
+    init {
+        reloadAllImages()
     }
 }
