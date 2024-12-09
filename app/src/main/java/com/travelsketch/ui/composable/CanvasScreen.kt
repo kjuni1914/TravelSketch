@@ -30,6 +30,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.zIndex
 import com.travelsketch.data.model.BoxData
 import com.travelsketch.data.model.BoxType
 import com.travelsketch.viewmodel.CanvasViewModel
@@ -53,6 +54,7 @@ fun CanvasScreen(
     var dragStartRelativeOffset by remember { mutableStateOf(Offset.Zero) }
     val selectedBoxPosition = remember { mutableStateOf<Offset?>(null) }
     val invalidateCanvasState = viewModel.invalidateCanvasState
+    var showMediaOnly by remember { mutableStateOf(false) } // State to toggle media-only mode
 
 
     val context = LocalContext.current
@@ -292,6 +294,17 @@ fun CanvasScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier
+            .align(Alignment.TopStart)
+            .padding(16.dp)
+            .zIndex(1f) // Ensure the button is above other components
+        ) {
+            androidx.compose.material3.Button(onClick = {
+                showMediaOnly = !showMediaOnly // Toggle the mode
+            }) {
+                Text(text = if (showMediaOnly) "Show All" else "Show Media Only")
+            }
+        }
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
@@ -304,7 +317,6 @@ fun CanvasScreen(
                     viewModel.setScreenSize(size.width, size.height)
                 }
                 .then(if (invalidateCanvasState.value) Modifier else Modifier)
-
                 .pointerInput(Unit) {
                     detectTransformGestures { centroid, pan, zoom, _ ->
                         if (!isDragging) {
@@ -330,6 +342,11 @@ fun CanvasScreen(
                     detectDragGesturesAfterLongPress(
                         onDragStart = { offset ->
                             val canvasPos = screenToCanvas(offset)
+                            val boxesToShow = if (showMediaOnly) {
+                                viewModel.boxes.filter { it.type in listOf(BoxType.IMAGE.toString(), BoxType.VIDEO.toString()) }
+                            } else {
+                                viewModel.boxes
+                            }
                             val hitBox = viewModel.boxes.findLast { box ->
                                 val boxPos = Offset(box.boxX.toFloat(), box.boxY.toFloat())
                                 val boxSize = Size(box.width!!.toFloat(), box.height!!.toFloat())
@@ -453,11 +470,14 @@ fun CanvasScreen(
                     boundaryPaint
                 )
             }
+            val boxesToShow = if (showMediaOnly) {
+                viewModel.boxes.filter { it.type in listOf(BoxType.IMAGE.toString(), BoxType.VIDEO.toString()) }
+            } else {
+                viewModel.boxes
+            }
 
-            viewModel.boxes.forEach { box ->
-                viewModel.boxes.forEach { box ->
-                    drawBox(box)
-                }
+            boxesToShow.forEach { box ->
+                drawBox(box)
             }
 
             viewModel.selected.value?.let { selected ->

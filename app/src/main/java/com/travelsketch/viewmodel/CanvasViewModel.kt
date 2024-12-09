@@ -120,6 +120,55 @@ class CanvasViewModel : ViewModel() {
         }
     }
 
+    fun viewMediaBoxes(canvasId: String) {
+        Log.d("CanvasViewModel", "Starting viewMediaBoxes for canvas: $canvasId")
+        viewModelScope.launch {
+            isLoading.value = true
+            try {
+                Log.d("CanvasViewModel", "Requesting media box data from Firebase")
+                val snapshot = FirebaseClient.readAllBoxData(canvasId)
+                Log.d("CanvasViewModel", "Received ${snapshot?.size ?: 0} boxes from Firebase")
+
+                withContext(Dispatchers.Main) {
+                    boxes.clear()
+                    boxIdMap.clear()
+                    Log.d("CanvasViewModel", "Cleared existing boxes")
+
+                    snapshot?.forEach { boxData ->
+                        if (boxData != null &&
+                            (boxData.type == BoxType.IMAGE.toString() || boxData.type == BoxType.VIDEO.toString())) {
+                            Log.d("CanvasViewModel", "Processing media box: ${boxData.id}, type: ${boxData.type}, data: ${boxData.data}")
+                            boxes.add(boxData)
+                            boxIdMap[boxData.id] = boxData
+
+                            if (boxData.type == BoxType.IMAGE.toString() &&
+                                !boxData.data.isNullOrEmpty() &&
+                                boxData.data != "uploading") {
+                                Log.d("CanvasViewModel", "Found image box, initiating loading for: ${boxData.data}")
+                                loadImage(boxData.data)
+                            } else if (boxData.type == BoxType.VIDEO.toString() &&
+                                !boxData.data.isNullOrEmpty() &&
+                                boxData.data.startsWith("http")) {
+                                Log.d("CanvasViewModel", "Found video box, loading thumbnail for: ${boxData.data}")
+                                val thumbnail = loadVideoThumbnail(context!!, boxData.data)
+                                thumbnail?.let {
+                                    bitmaps[boxData.data] = it
+                                    invalidateCanvasState.value = !invalidateCanvasState.value
+                                }
+                            }
+                        }
+                    }
+                    Log.d("CanvasViewModel", "Finished processing media boxes. Total count: ${boxes.size}")
+                }
+            } catch (e: Exception) {
+                Log.e("CanvasViewModel", "Error loading media boxes", e)
+            } finally {
+                isLoading.value = false
+                Log.d("CanvasViewModel", "viewMediaBoxes completed")
+            }
+        }
+    }
+
     fun toggleIsEditable() {
         isEditable.value = !isEditable.value
         if (!isEditable.value) {
