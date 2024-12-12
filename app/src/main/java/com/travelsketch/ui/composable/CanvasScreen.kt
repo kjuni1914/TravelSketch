@@ -11,6 +11,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -29,9 +30,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.zIndex
+import com.travelsketch.R
 import com.travelsketch.data.model.BoxData
 import com.travelsketch.data.model.BoxType
 import com.travelsketch.data.model.ViewMode
@@ -486,30 +489,38 @@ fun CanvasScreen(
             horizontalArrangement = Arrangement.spacedBy(16.dp) // 버튼 간 간격 설정
         )
         {
-            androidx.compose.material3.Button(onClick = {
+            androidx.compose.foundation.Image(
+                painter = painterResource(id = R.drawable.all_button_icon), // All 버튼용 이미지 리소스
+                contentDescription = "All",
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable {
                 viewModel.currentViewMode.value =  ViewMode.ALL
                 if (viewModel.currentViewMode.value == ViewMode.ALL) {
                     viewModel.arrangeMediaBoxes() // 미디어 박스 정렬 및 위치 재배치
                 }
-            }) {
-                Text(text = "All")
-            }
-            androidx.compose.material3.Button(onClick = {
-                viewModel.currentViewMode.value =  ViewMode.MEDIA_ONLY
+                }
+            )
+            androidx.compose.foundation.Image(
+                painter = painterResource(id = R.drawable.media_button_icon), // Media 버튼용 이미지 리소스
+                contentDescription = "Media",
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable {                viewModel.currentViewMode.value =  ViewMode.MEDIA_ONLY
                 if (viewModel.currentViewMode.value == ViewMode.MEDIA_ONLY) {
                     viewModel.arrangeMediaBoxes() // 미디어 박스 정렬 및 위치 재배치
                 }
-            }) {
-                Text(text = "Media")
-            }
-            androidx.compose.material3.Button(onClick = {
-                viewModel.currentViewMode.value =  ViewMode.RECEIPTS_ONLY
+            })
+            androidx.compose.foundation.Image(
+                painter = painterResource(id = R.drawable.receipt_button_icon), // Receipt 버튼용 이미지 리소스
+                contentDescription = "Receipt",
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable {                viewModel.currentViewMode.value =  ViewMode.RECEIPTS_ONLY
                 if (viewModel.currentViewMode.value == ViewMode.RECEIPTS_ONLY) {
                     viewModel.arrangeReceiptBoxes() // 미디어 박스 정렬 및 위치 재배치
                 }
-            }) {
-                Text(text = "Receipt")
-            }
+            })
         }
         val boxesToRender = when (viewModel.currentViewMode.value) {
             ViewMode.MEDIA_ONLY -> viewModel.arrangeMediaBoxes()

@@ -19,10 +19,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -169,10 +176,22 @@ class CanvasActivity : ComponentActivity() {
                             onClick = {
                                 isEditing.value = !isEditing.value
                                 canvasViewModel.toggleIsEditable()
-                            }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White // 흰색 배경
+                            ),
+                            modifier = Modifier
+                                .padding(8.dp) // 버튼 주위 여백 추가
+                                .border(
+                                    width = 2.dp, // 테두리 두께
+                                    color = Color.Black, // 테두리 색상
+                                    shape = RoundedCornerShape(8.dp) // 테두리 모서리 둥글게
+                                )
                         ) {
-                            Text(if (isEditing.value) "Done" else "Edit")
-                        }
+                            Text(
+                                text = if (isEditing.value) "Done" else "Edit",
+                                color = Color.Black // 검은색 텍스트
+                            )                        }
                     }
                 },
                 editor = {
