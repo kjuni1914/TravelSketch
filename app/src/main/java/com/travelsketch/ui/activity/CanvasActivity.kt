@@ -1,19 +1,9 @@
 package com.travelsketch.ui.activity
 
 import android.Manifest
-import android.app.Activity
-import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.pdf.PdfDocument
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,25 +13,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
-import com.travelsketch.data.model.BoxType
-import com.travelsketch.ui.composable.CanvasScreen
-import com.travelsketch.ui.composable.Editor
-import com.travelsketch.ui.composable.ImageSourceDialog
-import com.travelsketch.ui.composable.StatusBar
-import com.travelsketch.ui.composable.TextInputDialog
-import com.travelsketch.ui.composable.VideoSourceDialog
+import com.travelsketch.ui.composable.*
 import com.travelsketch.ui.layout.CanvasEditLayout
 import com.travelsketch.viewmodel.CanvasViewModel
 import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 
 class CanvasActivity : ComponentActivity() {
     private val CAMERA_PERMISSION_REQUEST_CODE = 100
@@ -57,28 +35,36 @@ class CanvasActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        canvasViewModel = ViewModelProvider(this)
-            .get(CanvasViewModel::class.java)
+        canvasViewModel = ViewModelProvider(this)[CanvasViewModel::class.java]
+        canvasViewModel.setContext(this)
         checkAndRequestPermissions()
 
-        val canvasViewModel = ViewModelProvider(this)[CanvasViewModel::class.java]
-        canvasViewModel.setContext(this)
-        val canvasId = intent.getStringExtra("CANVAS_ID")
-        val isEditable = intent.getBooleanExtra("EDITABLE", false) // editable 상태 받기
+        val rawCanvasId = intent.getStringExtra("CANVAS_ID")
+        val isEditable = intent.getBooleanExtra("EDITABLE", false)
 
-        if (canvasId == null) {
+        if (rawCanvasId == null) {
             finish()
             return
         }
 
-        canvasViewModel.initializeCanvas(canvasId)
+        // Extract actual canvasId from MapData string if necessary
+        val actualCanvasId = when {
+            rawCanvasId.contains("canvasId=") ->
+                rawCanvasId.substringAfter("canvasId=").substringBefore(",")
+            else -> rawCanvasId
+        }
 
+        // Initialize canvas with cleaned canvasId
+        canvasViewModel.initializeCanvas(actualCanvasId)
+
+        // Gallery launcher for images
         galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri?.let {
                 canvasViewModel.startImagePlacement(it.toString())
             }
         }
 
+        // Camera launcher for images
         cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
             if (success) {
                 tempImageUri?.let { uri ->
@@ -87,12 +73,14 @@ class CanvasActivity : ComponentActivity() {
             }
         }
 
+        // Gallery launcher for videos
         videoLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri?.let {
                 canvasViewModel.startVideoPlacement(it.toString())
             }
         }
 
+        // Camera launcher for videos
         videoCameraLauncher = registerForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
             if (success) {
                 tempVideoUri?.let { uri ->
@@ -100,6 +88,7 @@ class CanvasActivity : ComponentActivity() {
                 }
             }
         }
+
         setContent {
             val showDialog = remember { mutableStateOf(false) }
             val showImageSourceDialog = remember { mutableStateOf(false) }
@@ -121,15 +110,17 @@ class CanvasActivity : ComponentActivity() {
                     onDismiss = { showImageSourceDialog.value = false },
                     onSelectCamera = {
                         val imageFile = File.createTempFile("temp_image", ".jpg", cacheDir)
-
-                        tempImageUri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", imageFile)
+                        tempImageUri = FileProvider.getUriForFile(
+                            this,
+                            "${packageName}.fileprovider",
+                            imageFile
+                        )
                         tempImageUri?.let { cameraLauncher.launch(it) }
                         showImageSourceDialog.value = false
                     },
                     onSelectGallery = {
                         galleryLauncher.launch("image/*")
                         showImageSourceDialog.value = false
-
                     }
                 )
             }
@@ -139,8 +130,11 @@ class CanvasActivity : ComponentActivity() {
                     onDismiss = { showVideoSourceDialog.value = false },
                     onSelectCamera = {
                         val videoFile = File.createTempFile("temp_video", ".mp4", cacheDir)
-
-                        tempVideoUri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", videoFile)
+                        tempVideoUri = FileProvider.getUriForFile(
+                            this,
+                            "${packageName}.fileprovider",
+                            videoFile
+                        )
                         tempVideoUri?.let { videoCameraLauncher.launch(it) }
                         showVideoSourceDialog.value = false
                     },
@@ -156,15 +150,15 @@ class CanvasActivity : ComponentActivity() {
                     CanvasScreen(
                         viewModel = canvasViewModel,
                         onTapForBox = { canvasPos ->
-                            if (isEditing.value && isEditable) { // Allow box creation only if editable
+                            if (isEditing.value && isEditable) {
                                 canvasViewModel.createBox(canvasPos.x, canvasPos.y)
                             }
                         },
-                        editable = isEditable // Pass the editable state to CanvasScreen
+                        editable = isEditable
                     )
                 },
                 button = {
-                    if (isEditable) { // Show Edit button only when editable is true
+                    if (isEditable) {
                         Button(
                             onClick = {
                                 isEditing.value = !isEditing.value
@@ -195,8 +189,7 @@ class CanvasActivity : ComponentActivity() {
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-            } else {
+            if (!isGranted) {
                 Toast.makeText(this, "Camera permission is required", Toast.LENGTH_SHORT).show()
             }
         }
@@ -206,9 +199,7 @@ class CanvasActivity : ComponentActivity() {
             ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED -> {
-            }
-            else -> {
+            ) != PackageManager.PERMISSION_GRANTED -> {
                 requestPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
         }
@@ -220,10 +211,6 @@ class CanvasActivity : ComponentActivity() {
         if (!canvasViewModel.checkStoragePermission(this)) {
             canvasViewModel.requestStoragePermission(this)
         }
-        canvasViewModel.sharePdfFile(
-            this,
-            path
-//            "/storage/emulated/0/Android/data/com.travelsketch/files/myPDF.pdf"
-        )
+        canvasViewModel.sharePdfFile(this, path)
     }
 }
