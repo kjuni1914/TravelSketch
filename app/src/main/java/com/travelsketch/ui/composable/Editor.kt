@@ -1,7 +1,6 @@
 package com.travelsketch.ui.composable
 
 import CanvasViewModel
-import android.app.Activity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -50,7 +49,6 @@ fun Editor(
         }
     }
     btnLst.add(R.drawable.share_btn to { createAndSharePdf() })
-
     btnLst.add(R.drawable.save_btn to { canvasViewModel.saveAll() })
 
     Row(
