@@ -397,7 +397,7 @@ class CanvasViewModel : ViewModel() {
                     GPTApiClient.sendImage(
                         imageUri = uri,
                         context = context!!,
-                        apiKey = "" // API 키를 설정하세요
+                        apiKey = ""
                     ) { gptResult ->
                         Log.d("CanvasViewModel", "GPT API Result: $gptResult")
 
