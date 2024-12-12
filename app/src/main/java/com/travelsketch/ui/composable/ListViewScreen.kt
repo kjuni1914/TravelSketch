@@ -1,3 +1,4 @@
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,9 +35,9 @@ fun ListViewScreen(
     friendItems: List<ListElementData>,
     onNavigateToListView: () -> Unit,
     onNavigateToMapSetup: () -> Unit,
-    onAddFriend: (String) -> Unit,
-    onToggleVisibility: (String, Boolean) -> Unit,
-    onNavigateToCanvas: (String) -> Unit,
+    onAddFriend: (String) -> Unit, // 친구 추가 콜백\
+    onToggleVisibility: (String, Boolean) -> Unit, // visibility 변경 콜백 추가
+    onNavigateToCanvas: (String, Boolean) -> Unit, // editable 상태 전달 추가
     onUpdateTitle: (String, String) -> Unit,
     onUpdateCoverImage: (String) -> Unit,
     onDeleteCanvas: (String) -> Unit,
@@ -50,30 +51,11 @@ fun ListViewScreen(
 
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF335577))
+        .fillMaxSize()
+        .background(Color(0xFF335577))
     ) {
         Column {
-            // Logout Button
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.LightGray)
-                    .padding(8.dp)
-            ) {
-                Button(
-                    onClick = { onLogout() },
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .size(48.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFFFCDD2),
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text("🚪", fontSize = 20.sp)
-                }
-            }
+
 
             LazyColumn(
                 modifier = Modifier
@@ -103,7 +85,7 @@ fun ListViewScreen(
                         isCurrentUserCanvas = true,
                         isVisible = item.isVisible,
                         onToggleVisibility = onToggleVisibility,
-                        onNavigateToCanvas = { onNavigateToCanvas(item.canvasId) },
+                        onNavigateToCanvas = { onNavigateToCanvas(item.canvasId,true) },
                         onUpdateTitle = onUpdateTitle,
                         onUpdateCoverImage = { onUpdateCoverImage(item.canvasId) },
                         onDeleteCanvas = { onDeleteCanvas(item.canvasId) }
@@ -132,7 +114,7 @@ fun ListViewScreen(
                         isCurrentUserCanvas = false,
                         isVisible = true,
                         onToggleVisibility = { _, _ -> },
-                        onNavigateToCanvas = { onNavigateToCanvas(item.canvasId) },
+                        onNavigateToCanvas = { onNavigateToCanvas(item.canvasId,false) },
                         onUpdateTitle = onUpdateTitle,
                         onUpdateCoverImage = {},
                         onDeleteCanvas = {}
@@ -141,18 +123,20 @@ fun ListViewScreen(
             }
         }
 
-        // Map Button
+        // 버튼을 화면 하단에 고정
         Button(
             onClick = { onNavigateToListView() },
             modifier = Modifier
-                .absoluteOffset(y = (-32).dp)
-                .align(Alignment.BottomCenter)
-                .width(115.dp)
-                .height(48.dp)
-                .border(0.5.dp, Color.Black, RoundedCornerShape(25.dp)),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFFFF9C4),
-                contentColor = Color.Black
+                .absoluteOffset(y = (-32).dp) // 화면 하단에서 32dp 위로
+                .align(Alignment.BottomCenter) // 하단 중앙 정렬
+                .width(115.dp) // 너비 설정
+                .height(48.dp) // 높이 설정
+                .border(width = 0.5.dp, color = Color.Black, shape = RoundedCornerShape(25.dp)), // 테두리 추가
+
+        colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFFFFDE7)
+            , // 밝은 파란색
+                contentColor = Color.Black // 텍스트 색상
             )
         ) {
             Text(
@@ -162,8 +146,6 @@ fun ListViewScreen(
                 color = Color(0xFF2196F3)
             )
         }
-
-        // FloatingActionButton to Navigate to Map Setup
         FloatingActionButton(
             onClick = { onNavigateToMapSetup() },
             modifier = Modifier
@@ -193,11 +175,10 @@ fun ListViewScreen(
             Text(
                 text = "\uD83D\uDC64",
                 color = Color.White,
-                fontSize = 20.sp
+                fontSize = 20.dp.value.sp
             )
         }
-
-        // Add Friend Popup
+        // 팝업 UI
         if (showPopup) {
             AlertDialog(
                 onDismissRequest = { showPopup = false },

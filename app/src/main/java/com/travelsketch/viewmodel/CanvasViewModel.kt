@@ -26,6 +26,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.storage.FirebaseStorage
+import com.travelsketch.api.GPTApiClient
 import com.travelsketch.data.dao.FirebaseClient
 import com.travelsketch.data.dao.FirebaseRepository
 import com.travelsketch.data.model.BoxData
@@ -101,6 +102,7 @@ class CanvasViewModel : ViewModel() {
         canvasId.value = id
         viewAllBoxes(id)
     }
+
 
     fun loadImage(imageUrl: String) {
         if (imageUrl.isEmpty() || imageUrl == "uploading" || bitmaps.containsKey(imageUrl)) return
@@ -364,6 +366,24 @@ class CanvasViewModel : ViewModel() {
                 isUploading.value = true
                 Log.d("asdfasdfasdf", "Starting image box creation process")
 
+                // GPS 정보 추출
+                val latLong = try {
+                    context?.contentResolver?.openInputStream(uri)?.use { inputStream ->
+                        val exif = androidx.exifinterface.media.ExifInterface(inputStream)
+                        val latLongArray = FloatArray(2)
+                        if (exif.getLatLong(latLongArray)) {
+                            Pair(latLongArray[0].toDouble(), latLongArray[1].toDouble())
+                        } else {
+                            null
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("CanvasViewModel", "Error extracting GPS data", e)
+                    null
+                }
+
+                Log.d("CanvasViewModel", "Extracted GPS coordinates: $latLong")
+
                 // 이미지 분류 수행
                 val bitmap = MediaStore.Images.Media.getBitmap(context?.contentResolver, uri)
                 val isReceipt = receiptClassifier?.classifyImage(bitmap) ?: false
@@ -371,10 +391,7 @@ class CanvasViewModel : ViewModel() {
 
                 val (width, height) = calculateImageDimensions(context!!, uri)
                 val boxId = UUID.randomUUID().toString()
-
-                // BoxType을 분류 결과에 따라 설정
                 val boxType = if (isReceipt) BoxType.RECEIPT else BoxType.IMAGE
-                Log.d("asdfasdfasdf", "Setting box type as: ${boxType.name}")
 
                 tempBox = BoxData(
                     id = boxId,
@@ -383,7 +400,9 @@ class CanvasViewModel : ViewModel() {
                     width = width,
                     height = height,
                     type = boxType.toString(),
-                    data = "uploading"
+                    data = "uploading",
+                    latitude = latLong?.first,
+                    longitude = latLong?.second
                 )
 
                 // Firebase Storage에 업로드
@@ -405,6 +424,61 @@ class CanvasViewModel : ViewModel() {
                 boxIdMap[finalBox.id] = finalBox
                 loadImage(downloadUrl)
 
+                // 위치 업데이트
+                updateCanvasLocation(canvasId.value, boxes)
+
+                if (!saveSuccess) {
+                    throw Exception("Failed to save box data to database")
+                }
+
+                boxes.add(finalBox)
+                boxIdMap[finalBox.id] = finalBox
+                loadImage(downloadUrl)
+
+                // GPT API 호출 (영수증인 경우)
+                if (isReceipt) {
+                    GPTApiClient.sendImage(
+                        imageUri = uri,
+                        context = context!!,
+                        apiKey = "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" // API 키를 설정하세요
+                    ) { gptResult ->
+                        Log.d("CanvasViewModel", "GPT API Result: $gptResult")
+
+                        // 텍스트 박스 생성
+                        val textBox = BoxData(
+                            id = UUID.randomUUID().toString(),
+                            boxX = finalBox.boxX,
+                            boxY = finalBox.boxY + (finalBox.height ?: 0) + 20, // 이미지 아래에 배치
+                            width = finalBox.width,
+                            height = 200, // 텍스트 박스의 높이를 설정
+                            type = BoxType.TEXT.toString(),
+                            data = gptResult
+                        )
+
+                        viewModelScope.launch {
+                            try {
+                                FirebaseClient.writeBoxData(
+                                    canvasId.value,
+                                    textBox.id,
+                                    textBox
+                                )
+                                // 캔버스에 텍스트 박스 추가
+                                boxes.add(textBox)
+                                boxIdMap[textBox.id] = textBox
+                                invalidateCanvasState.value = !invalidateCanvasState.value
+                            } catch (e: Exception) {
+                                Log.e("CanvasViewModel", "Error saving text box to Firebase", e)
+                            }
+                        }
+
+                        // 캔버스에 텍스트 박스 추가
+                        boxes.add(textBox)
+                        boxIdMap[textBox.id] = textBox
+
+                        invalidateCanvasState.value = !invalidateCanvasState.value
+                    }
+                }
+
             } catch (e: Exception) {
                 Log.e("asdfasdfasdf", "Error in createImageBox", e)
                 tempBox?.let {
@@ -419,7 +493,6 @@ class CanvasViewModel : ViewModel() {
         }
     }
 
-    // ... [나머지 기존 메소드들은 동일하게 유지]
 
     fun toggleIsEditable() {
         isEditable.value = !isEditable.value
@@ -533,7 +606,7 @@ class CanvasViewModel : ViewModel() {
                 Log.d("asdfasdfasdf", "Starting video box creation")
 
                 val width = 600
-                val height = 400
+                val height = 800
                 val boxId = UUID.randomUUID().toString()
 
                 tempBox = BoxData(
@@ -601,6 +674,7 @@ class CanvasViewModel : ViewModel() {
                 val maxSize = 500
                 val width = options.outWidth
                 val height = options.outHeight
+
                 val ratio = width.toFloat() / height.toFloat()
 
                 if (width > height) {
@@ -609,39 +683,12 @@ class CanvasViewModel : ViewModel() {
                     Pair((maxSize * ratio).toInt(), maxSize)
                 }
             } catch (e: Exception) {
-                Log.e("asdf", "Error calculating image dimensions", e)
+                Log.e("calculateImageDimensions", "Error calculating image dimensions", e)
                 Pair(500, 500)
             }
         }
     }
 
-    private suspend fun calculateVideoDimensions(context: Context, uri: Uri): Pair<Int, Int> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val options = BitmapFactory.Options().apply {
-                    inJustDecodeBounds = true
-                }
-
-                context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    BitmapFactory.decodeStream(inputStream, null, options)
-                }
-
-                val maxSize = 500
-                val width = options.outWidth
-                val height = options.outHeight
-                val ratio = width.toFloat() / height.toFloat()
-
-                if (width > height) {
-                    Pair(maxSize, (maxSize / ratio).toInt())
-                } else {
-                    Pair((maxSize * ratio).toInt(), maxSize)
-                }
-            } catch (e: Exception) {
-                Log.e("CanvasViewModel", "Error calculating video dimensions", e)
-                Pair(500, 500)
-            }
-        }
-    }
 
     fun delete() {
         viewModelScope.launch {
@@ -649,10 +696,10 @@ class CanvasViewModel : ViewModel() {
                 try {
                     if ((box.type == BoxType.IMAGE.toString() || box.type == BoxType.RECEIPT.toString()) &&
                         box.data.startsWith("https")) {
-                        try {val storage = FirebaseStorage.getInstance()
+                        try {
+                            val storage = FirebaseStorage.getInstance()
                             val imageRef = storage.getReferenceFromUrl(box.data)
                             imageRef.delete().await()
-                            Log.d("asdfasdfasdf", "Successfully deleted image from storage")
                         } catch (e: Exception) {
                             Log.e("CanvasViewModel", "Failed to delete image from storage", e)
                         }
@@ -663,13 +710,14 @@ class CanvasViewModel : ViewModel() {
                     boxes.remove(box)
                     boxIdMap.remove(box.id)
                     selected.value = null
+
+                    updateCanvasLocation(canvasId.value, boxes)
                 } catch (e: Exception) {
                     Log.e("CanvasViewModel", "Failed to delete box", e)
                 }
             }
         }
     }
-
     fun updateBoxPosition(newX: Int, newY: Int) {
         val currentBox = selected.value ?: return
 
@@ -699,11 +747,15 @@ class CanvasViewModel : ViewModel() {
                         box
                     )
                 }
+                // 위치 업데이트 추가
+                updateCanvasLocation(canvasId.value, boxes)
             } finally {
                 isLoading.value = false
             }
         }
     }
+
+
 
     fun checkStoragePermission(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(
@@ -767,9 +819,8 @@ class CanvasViewModel : ViewModel() {
         val file = File(directory, "tmp.pdf")
 
         try {
-            // FileOutputStream을 use 블록으로 감싸고
             FileOutputStream(file).use { outputStream ->
-                pdfDocument.writeTo(outputStream) // writeTo() 호출 시 outputStream을 사용
+                pdfDocument.writeTo(outputStream)
             }
 
             Log.d("TEST", "PDF가 ${file.absolutePath}에 저장되었습니다")
@@ -779,7 +830,7 @@ class CanvasViewModel : ViewModel() {
             e.printStackTrace()
             Log.d("TEST", "PDF 저장 중 오류 발생")
         } finally {
-            pdfDocument.close()  // pdfDocument.close()는 finally에서 호출되어야 함
+            pdfDocument.close()
         }
         return null
     }
@@ -799,14 +850,13 @@ class CanvasViewModel : ViewModel() {
             }
 
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/pdf"  // 공유할 파일 타입
-                putExtra(Intent.EXTRA_STREAM, fileUri)  // 파일 URI 전달
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)  // URI 읽기 권한 부여
+                type = "application/pdf"
+                putExtra(Intent.EXTRA_STREAM, fileUri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
 
             context.startActivity(Intent.createChooser(shareIntent, "Select App to share"))
         } else {
-            // 파일이 존재하지 않으면 오류 처리
             Log.d("TEST", "File doesn't exist.")
         }
     }
@@ -815,6 +865,50 @@ class CanvasViewModel : ViewModel() {
         val density = context!!.resources.displayMetrics.density
         return (dp * density).toInt()
     }
+
+    fun updateCanvasLocation(canvasId: String, boxes: List<BoxData>) {
+        viewModelScope.launch {
+            try {
+                // 위치 데이터가 있는 박스들만 필터링
+                val boxesWithLocation = boxes.filter { box ->
+                    box.latitude != null && box.longitude != null &&
+                            box.latitude != 0.0 && box.longitude != 0.0
+                }
+
+                // 데이터베이스 직접 업데이트
+                val updates = mutableMapOf<String, Any>()
+
+                if (boxesWithLocation.isNotEmpty()) {
+                    // 위치가 있는 박스가 있으면 평균 계산
+                    val avgLatitude = boxesWithLocation.map { it.latitude!! }.average()
+                    val avgLongitude = boxesWithLocation.map { it.longitude!! }.average()
+                    updates["avg_gps_latitude"] = avgLatitude
+                    updates["avg_gps_longitude"] = avgLongitude
+                } else {
+                    // 위치 데이터가 없는 경우 초기값으로 설정
+                    val originalData = FirebaseRepository().readMapCanvasData(canvasId)
+                    if (originalData != null) {
+                        updates["avg_gps_latitude"] = originalData.avg_gps_latitude
+                        updates["avg_gps_longitude"] = originalData.avg_gps_longitude
+                    }
+                }
+
+                // Firebase 업데이트 실행
+                if (updates.isNotEmpty()) {
+                    FirebaseClient.databaseRef
+                        .child("map")
+                        .child(canvasId)
+                        .updateChildren(updates)
+                        .await()
+
+                    Log.d("CanvasViewModel", "Updated canvas location with updates: $updates")
+                }
+            } catch (e: Exception) {
+                Log.e("CanvasViewModel", "Failed to update canvas location", e)
+            }
+        }
+    }
+
 
     init {
         reloadAllImages()

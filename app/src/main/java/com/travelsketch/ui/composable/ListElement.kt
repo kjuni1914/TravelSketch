@@ -7,9 +7,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.travelsketch.R
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListElement(
     title: String,
@@ -44,6 +48,7 @@ fun ListElement(
     val TitleFontFamily = FontFamily(
         Font(R.font.typo_crayonm) // 파일 이름은 확장자 없이 사용
     )
+    var isEditingTitle by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -113,63 +118,139 @@ fun ListElement(
             )
         }
 
-        // 다이얼로그
         if (showDialog) {
             AlertDialog(
                 onDismissRequest = { showDialog = false },
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
                 title = {
-                    Text(text = "Edit Options")
+                    Text(
+                        text = "Edit Canvas",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                 },
                 text = {
-                    Column {
-                        var isEditingTitle by remember { mutableStateOf(false) }
-
-                        if (isEditingTitle) {
-                            TextField(
-                                value = newTitle,
-                                onValueChange = { newTitle = it },
-                                label = { Text("New Title") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        } else {
-                            Text(
-                                text = "1. Edit Title",
-                                modifier = Modifier.clickable {
-                                    isEditingTitle = true
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // 옵션 1: Edit Title
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isEditingTitle = true },
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF3F4F6)),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
+                                if (isEditingTitle) {
+                                    TextField(
+                                        value = newTitle,
+                                        onValueChange = { newTitle = it },
+                                        label = { Text("Enter new title") },
+                                        modifier = Modifier.fillMaxWidth().background(Color.Transparent),
+                                        colors = TextFieldDefaults.textFieldColors(
+                                            containerColor = Color(0xFFF3F4F6), // 텍스트 필드 배경색
+                                            cursorColor = Color(0xFF2196F3), // 커서 색상
+                                            focusedIndicatorColor = Color(0xFF2196F3), // 포커스 상태 하단 테두리
+                                            unfocusedIndicatorColor = Color.LightGray // 비포커스 상태 하단 테두리
+                                        )
+                                    )
+                                } else {
+                                    Text(
+                                        text = "Edit Title",
+                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                            color = Color.Black
+                                        )
+                                    )
                                 }
-                            )
+                            }
                         }
 
-                        Text(text = "2. Set Cover Image",
-                            modifier = Modifier.clickable {
-                                onUpdateCoverImage(canvasId)
-                                showDialog = false
+                        // 옵션 2: Set Cover Image
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onUpdateCoverImage(canvasId)
+                                    showDialog = false
+                                },
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF3F4F6)),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
+                                Text(
+                                    text = "Set Cover Image",
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        color = Color.Black
+                                    )
+                                )
                             }
-                        )
-                        Text(text = "3. Delete Canvas",
-                            modifier = Modifier.clickable {
-                                // Canvas 삭제
-                                onDeleteCanvas(canvasId)
-                                showDialog = false
-                            })
+                        }
+
+                        // 옵션 3: Delete Canvas
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onDeleteCanvas(canvasId)
+                                    showDialog = false
+                                },
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF3F4F6)),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
+                                Text(
+                                    text = "Delete Canvas",
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        color = Color.Red
+                                    )
+                                )
+                            }
+                        }
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = {
-                        if (newTitle.isNotBlank()) {
-                            onUpdateTitle(canvasId, newTitle)
-                            showDialog = false
+                    TextButton(
+                        onClick = {
+                            if (newTitle.isNotBlank()) {
+                                onUpdateTitle(canvasId, newTitle)
+                                showDialog = false
+                            }
                         }
-                    }) {
-                        Text("Save")
+                    ) {
+                        Text("Save", color = Color(0xFF2196F3))
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDialog = false }) {
-                        Text("Cancel")
+                    TextButton(
+                        onClick = { showDialog = false }
+                    ) {
+                        Text("Cancel", color = Color.Gray)
                     }
-                }
+                },
+                shape = RoundedCornerShape(12.dp),
+                containerColor = Color.White
             )
         }
     }
-}
+    }

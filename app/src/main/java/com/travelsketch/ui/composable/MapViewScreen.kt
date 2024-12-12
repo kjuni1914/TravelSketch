@@ -51,7 +51,7 @@ fun MapViewScreen(
     viewModel: MapViewModel,
     onNavigateToListView: () -> Unit,
     onNavigateToMapSetup: () -> Unit,
-    onNavigateToCanvas: (String) -> Unit // canvasId를 전달받는 콜백 추가
+    onNavigateToCanvas: (String, Boolean) -> Unit // canvasId와 editable 상태를 전달받는 콜백 추가
 ) {
     val canvasDataList by viewModel.userCanvasDataList.collectAsState() // 사용자 캔버스 데이터 상태 관찰
     val friendCanvasDataList by viewModel.friendCanvasDataList.collectAsState() // 친구 캔버스 데이터
@@ -195,7 +195,7 @@ fun MapViewScreen(
                         cameraPositionState = cameraPositionState,
                         onClick = { canvasId ->
                             // 사용자 마커 클릭 시 동작
-                            onNavigateToCanvas(canvasId) // CanvasActivity로 이동
+                            onNavigateToCanvas(canvasId,true) // CanvasActivity로 이동
                         }
                     )
                 }
@@ -222,7 +222,7 @@ fun MapViewScreen(
                         cameraPositionState = cameraPositionState,
                         onClick = { canvasId ->
                             // 친구 마커 클릭 시 동작
-                            onNavigateToCanvas(canvasId) // CanvasActivity로 이동
+                            onNavigateToCanvas(canvasId,false) // CanvasActivity로 이동
                         },
                         borderColor = Color.Green
                     )
@@ -247,10 +247,10 @@ fun MapViewScreen(
                         .weight(1f)
                         .padding(end = 8.dp),
                     colors = TextFieldDefaults.textFieldColors(
-                        containerColor = Color.LightGray,
+                        containerColor = Color.White,
                         cursorColor = Color.Black,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
+                        focusedIndicatorColor = Color(0xFF2196F3),
+                        unfocusedIndicatorColor = Color(0xFF2196F3)
                     ),
                     shape = RoundedCornerShape(8.dp)
                 )
@@ -274,8 +274,8 @@ fun MapViewScreen(
                     modifier = Modifier.height(56.dp),
 
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFD6D6D6),
-                        contentColor = Color.Black
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF2196F3)
                     )
                 ) {
                     Text(

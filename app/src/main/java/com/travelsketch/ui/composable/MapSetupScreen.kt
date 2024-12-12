@@ -16,6 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,6 +26,7 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.auth.FirebaseAuth
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.travelsketch.R
 import com.travelsketch.api.RetrofitInstance
 import com.travelsketch.ui.composable.CenterMarker
 import com.travelsketch.ui.composable.Map
@@ -34,7 +38,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapSetupScreen(
-    onLocationConfirmed: (LatLng) -> Unit = {},
+    onLocationConfirmed: (LatLng, String, Boolean) -> Unit = { _, _, _ -> },
     mapViewModel: MapViewModel
 ) {
     val context = LocalContext.current
@@ -42,43 +46,49 @@ fun MapSetupScreen(
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(initialPosition, 15f)
     }
-// FirebaseAuth를 통해 userId 가져오기
+
     val userId = FirebaseAuth.getInstance().currentUser?.uid
     if (userId == null) {
         Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
         return
     }
-//    var searchText by remember { mutableStateOf("") }
-    var searchText by remember { mutableStateOf("") } // 검색 텍스트 상태
+
+    var searchText by remember { mutableStateOf("") }
     var selectedPosition by remember { mutableStateOf(initialPosition) }
     var markerLocationName by remember { mutableStateOf("Unknown Location") }
     var mapCanvasTitle by remember { mutableStateOf("") } // 제목 입력 필드 상태
     var canvasId by remember { mutableStateOf("") } // Firebase에서 가져올 canvas_id 상태
 
-    val coroutineScope = rememberCoroutineScope() // CoroutineScope 추가
+    val coroutineScope = rememberCoroutineScope()
+
+    val CustomFontFamily = FontFamily(
+        Font(R.font.waving_at_christmas)
+    )
 
     LaunchedEffect(Unit) {
         canvasId = mapViewModel.getNextCanvasId() // ViewModel에서 canvas_id 가져오기
     }
 
-    Box(modifier = Modifier
-        .fillMaxSize()
-        .background(Color.White) // 배경 흰색 설정
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF335577)) // 배경 설정
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
         ) {
             Text(
-                text = "캔버스의 초기 위치를 선택해주세요.",
-                fontSize = 24.sp,
+                text = "Select Initial location of Canvas",
+                fontSize = 45.sp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                textAlign = TextAlign.Center
+                    .padding(10.dp),
+                fontFamily = CustomFontFamily,
+                textAlign = TextAlign.Center,
+                color = Color.White
             )
 
-            // 검색 필드와 버튼을 같은 줄에 배치
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -88,13 +98,13 @@ fun MapSetupScreen(
                 TextField(
                     value = searchText,
                     onValueChange = { searchText = it },
-                    placeholder = { Text(text = "검색: 대한민국") },
+                    placeholder = { Text(text = "Location: Korea") },
                     modifier = Modifier
-                        .weight(1f) // Row 내에서 가변 너비 설정
-                        .padding(end = 8.dp), // 버튼과 간격 추가
+                        .weight(1f)
+                        .padding(end = 8.dp),
                     colors = TextFieldDefaults.textFieldColors(
-                        containerColor = Color.LightGray, // 배경색 설정
-                        cursorColor = Color.Black, // 커서 색상
+                        containerColor = Color(0xFFFFF9C4),
+                        cursorColor = Color.Black,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     ),
@@ -118,16 +128,20 @@ fun MapSetupScreen(
                             }
                         }
                     },
-                    modifier = Modifier
-                        .height(56.dp), // TextField와 동일한 높이 설정
+                    modifier = Modifier.height(56.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFD6D6D6),
+                        containerColor = Color(0xFFFFF59D),
                         contentColor = Color.Black
                     )
                 ) {
-                    Text(text = "검색")
+                    Text(
+                        text = "검색",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
                 }
             }
+
             TextField(
                 value = mapCanvasTitle,
                 onValueChange = { mapCanvasTitle = it },
@@ -136,12 +150,12 @@ fun MapSetupScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 colors = TextFieldDefaults.textFieldColors(
-                    containerColor = Color.LightGray, // 배경색 설정
-                    cursorColor = Color.Black, // 커서 색상
+                    containerColor = Color(0xFFFFF9C4),
+                    cursorColor = Color.Black,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent
                 ),
-                shape = RoundedCornerShape(8.dp) // 모서리를 둥글게 설정
+                shape = RoundedCornerShape(8.dp)
             )
 
             Text(
@@ -151,7 +165,7 @@ fun MapSetupScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 8.dp),
                 textAlign = TextAlign.Start,
-                color = Color.Gray
+                color = Color.White
             )
 
             Box(
@@ -168,42 +182,38 @@ fun MapSetupScreen(
             }
         }
 
-        // 버튼을 절대 위치로 하단 고정
         Button(
             onClick = {
                 if (mapCanvasTitle.isEmpty()) {
                     Toast.makeText(context, "제목을 입력해주세요", Toast.LENGTH_SHORT).show()
                 } else {
-                    val canvas_id = canvasId
-                    val avg_gps_latitude = selectedPosition.latitude
-                    val avg_gps_longitude = selectedPosition.longitude
-                    val map_canvas_title = mapCanvasTitle
+                    val avgGpsLatitude = selectedPosition.latitude
+                    val avgGpsLongitude = selectedPosition.longitude
 
                     mapViewModel.createMapCanvasData(
                         userId = userId,
-                        canvasId = canvas_id,
-                        avgGpsLatitude = avg_gps_latitude,
-                        avgGpsLongitude = avg_gps_longitude,
-                        title = map_canvas_title
+                        canvasId = canvasId,
+                        avgGpsLatitude = avgGpsLatitude,
+                        avgGpsLongitude = avgGpsLongitude,
+                        title = mapCanvasTitle
                     )
-                    onLocationConfirmed(selectedPosition)
+                    onLocationConfirmed(selectedPosition, canvasId, true)
                 }
-                      },
+            },
             modifier = Modifier
-                .absoluteOffset(x = 0.dp, y = (-32).dp) // 화면 아래 고정
-                .width(110.dp) // 너비 고정
-                .height(48.dp) // 높이 고정
+                .absoluteOffset(x = 0.dp, y = (-32).dp)
+                .width(110.dp)
+                .height(48.dp)
                 .align(Alignment.BottomCenter),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFFD6D6D6),
-                contentColor = Color.Black // 텍스트 색상
+                contentColor = Color.Black
             )
         ) {
             Text(text = "확인")
         }
     }
 
-    // 카메라 이동 완료 시 선택 위치 업데이트
     LaunchedEffect(cameraPositionState.isMoving) {
         if (!cameraPositionState.isMoving) {
             selectedPosition = cameraPositionState.position.target
@@ -211,7 +221,6 @@ fun MapSetupScreen(
         }
     }
 }
-
 
 @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 suspend fun searchLocation(query: String, apiKey: String): LatLng? {
@@ -232,10 +241,3 @@ suspend fun searchLocation(query: String, apiKey: String): LatLng? {
         null
     }
 }
-
-//fun getLocationName(position: LatLng): String {
-//    val latitude = String.format("%.5f", position.latitude)
-//    val longitude = String.format("%.5f", position.longitude)
-//    return "위도: $latitude, 경도: $longitude"
-//}
-

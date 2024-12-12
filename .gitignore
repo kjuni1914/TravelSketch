@@ -113,4 +113,6 @@ fabric.properties
 
 !/gradle/wrapper/gradle-wrapper.jar
 
+/app/src/main/res/raw/service_account.json
+
 # End of https://www.toptal.com/developers/gitignore/api/androidstudio
