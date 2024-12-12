@@ -23,7 +23,8 @@ fun Editor(
     canvasViewModel: CanvasViewModel,
     showDialog: MutableState<Boolean>,
     showImageSourceDialog: MutableState<Boolean>,
-    showVideoSourceDialog : MutableState<Boolean>
+    showVideoSourceDialog : MutableState<Boolean>,
+    createAndSharePdf: () -> Unit
 ) {
     val selected = canvasViewModel.selected.value
 
@@ -47,6 +48,7 @@ fun Editor(
             btnLst.add(R.drawable.video_btn to { showVideoSourceDialog.value = true })
         }
     }
+    btnLst.add(R.drawable.share_btn to { createAndSharePdf() })
 
     btnLst.add(R.drawable.save_btn to { canvasViewModel.saveAll() })
 
