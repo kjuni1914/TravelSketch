@@ -48,8 +48,9 @@ class MapViewFragment : Fragment() {
                     viewModel = mapViewModel,
                     onNavigateToListView = { navigateToListViewActivity() },
                     onNavigateToMapSetup = { navigateToMapSetupFragment() }, // Fragment 전환 콜백
-                    onNavigateToCanvas = { canvasId -> navigateToCanvasActivity(requireContext(), canvasId) } // CanvasActivity로 이동 콜백 추가
-                )
+                    onNavigateToCanvas = { canvasId, editable ->
+                        navigateToCanvasActivity(requireContext(), canvasId, editable)
+                    }                )
             }
         }
     }
@@ -66,13 +67,13 @@ class MapViewFragment : Fragment() {
             addToBackStack(null) // 뒤로 가기 버튼 지원
         }
     }
-    private fun navigateToCanvasActivity(context: Context, canvasId: String) {
+    private fun navigateToCanvasActivity(context: Context, canvasId: String, editable: Boolean) {
         val intent = Intent(context, CanvasActivity::class.java).apply {
             putExtra("CANVAS_ID", canvasId) // canvasId 전달
+            putExtra("EDITABLE", editable) // editable 전달
         }
         context.startActivity(intent)
     }
-
 
     companion object {
         private const val ARG_LAT_LNG = "arg_lat_lng"
