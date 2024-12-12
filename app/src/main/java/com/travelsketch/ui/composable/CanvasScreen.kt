@@ -53,7 +53,8 @@ data class CanvasState(
 @Composable
 fun CanvasScreen(
     viewModel: CanvasViewModel,
-    onTapForBox: (Offset) -> Unit
+    onTapForBox: (Offset) -> Unit,
+    editable: Boolean // Add editable flag
 ) {
     var canvasState by remember { mutableStateOf(CanvasState()) }
     var isDragging by remember { mutableStateOf(false) }
@@ -510,6 +511,12 @@ fun CanvasScreen(
                 Text(text = "Receipt")
             }
         }
+        val boxesToRender = when (viewModel.currentViewMode.value) {
+            ViewMode.MEDIA_ONLY -> viewModel.arrangeMediaBoxes()
+            ViewMode.RECEIPTS_ONLY -> viewModel.arrangeReceiptBoxes()
+            ViewMode.ALL -> viewModel.boxes
+        }
+
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
@@ -546,6 +553,8 @@ fun CanvasScreen(
                 .pointerInput(Unit) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = { offset ->
+                            if (!editable) return@detectDragGesturesAfterLongPress // Skip drag if not editable
+
                             val canvasPos = screenToCanvas(offset)
                             val boxesToShow = if (viewModel.currentViewMode.value == ViewMode.MEDIA_ONLY) {
                                 viewModel.boxes.filter { it.type in listOf(BoxType.IMAGE.toString(), BoxType.VIDEO.toString()) }
@@ -584,6 +593,8 @@ fun CanvasScreen(
                             }
                         },
                         onDrag = { change, dragAmount ->
+                            if (!editable) return@detectDragGesturesAfterLongPress // Skip drag if not editable
+
                             change.consume()
                             val selectedBox = viewModel.selected.value
                             if (isDragging && selectedBox != null) {
@@ -616,7 +627,8 @@ fun CanvasScreen(
                             }
                         },
                         onDragEnd = {
-                            // 드래그 종료 시 ViewModel에 최종 위치 반영
+                            if (!editable) return@detectDragGesturesAfterLongPress // Skip drag if not editable
+
                             isDragging = false
                             val selectedBox = viewModel.selected.value
                             selectedBoxPosition.value?.let { finalPos ->
@@ -680,12 +692,6 @@ fun CanvasScreen(
                 )
             }
 
-            val boxesToRender = when (viewModel.currentViewMode.value) {
-                ViewMode.MEDIA_ONLY -> viewModel.arrangeMediaBoxes()
-                ViewMode.RECEIPTS_ONLY -> viewModel.arrangeReceiptBoxes()
-                ViewMode.ALL -> viewModel.boxes
-            }
-
 
             boxesToRender.forEach { box ->
                 drawBox(box)
@@ -716,24 +722,26 @@ fun CanvasScreen(
                 color = Color.Black
             )
         }
-        if (viewModel.selected.value?.type == BoxType.VIDEO.toString()) {
-            val selectedBox = viewModel.selected.value!!
-            val screenPos = canvasToScreen(Offset(selectedBox.boxX.toFloat(), selectedBox.boxY.toFloat()))
-            val scaledWidth = (selectedBox.width ?: 0) * canvasState.scale
-            val scaledHeight = (selectedBox.height ?: 0) * canvasState.scale
 
-            val density = LocalDensity.current
-            val xDp = with(density) { screenPos.x.toDp() }
-            val yDp = with(density) { screenPos.y.toDp() }
-            val wDp = with(density) { scaledWidth.toDp() }
-            val hDp = with(density) { scaledHeight.toDp() }
+        boxesToRender.find { it.id == viewModel.selected.value?.id }?.let { selectedBox ->
+            if (selectedBox.type == BoxType.VIDEO.toString()) {
+                val screenPos = canvasToScreen(Offset(selectedBox.boxX.toFloat(), selectedBox.boxY.toFloat()))
+                val scaledWidth = (selectedBox.width ?: 0) * canvasState.scale
+                val scaledHeight = (selectedBox.height ?: 0) * canvasState.scale
 
-            VideoPlayer(
-                videoUrl = selectedBox.data,
-                modifier = Modifier
-                    .absoluteOffset(x = xDp, y = yDp)
-                    .size(wDp, hDp)
-            )
+                val density = LocalDensity.current
+                val xDp = with(density) { screenPos.x.toDp() }
+                val yDp = with(density) { screenPos.y.toDp() }
+                val wDp = with(density) { scaledWidth.toDp() }
+                val hDp = with(density) { scaledHeight.toDp() }
+
+                VideoPlayer(
+                    videoUrl = selectedBox.data,
+                    modifier = Modifier
+                        .absoluteOffset(x = xDp, y = yDp)
+                        .size(wDp, hDp)
+                )
+            }
         }
     }
 }

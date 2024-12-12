@@ -16,6 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,6 +26,7 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.auth.FirebaseAuth
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.travelsketch.R
 import com.travelsketch.api.RetrofitInstance
 import com.travelsketch.ui.composable.CenterMarker
 import com.travelsketch.ui.composable.Map
@@ -57,28 +61,33 @@ fun MapSetupScreen(
 
     val coroutineScope = rememberCoroutineScope() // CoroutineScope 추가
 
+    val CustomFontFamily = FontFamily(
+        Font(R.font.waving_at_christmas) // 파일 이름은 확장자 없이 사용
+    )
+
     LaunchedEffect(Unit) {
         canvasId = mapViewModel.getNextCanvasId() // ViewModel에서 canvas_id 가져오기
     }
 
     Box(modifier = Modifier
         .fillMaxSize()
-        .background(Color.White) // 배경 흰색 설정
+        .background(Color(0xFF335577)) // 배경 흰색 설정
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
         ) {
             Text(
-                text = "캔버스의 초기 위치를 선택해주세요.",
-                fontSize = 24.sp,
+                text = "Select Initial location of Canvas",
+                fontSize = 45.sp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                textAlign = TextAlign.Center
+                    .padding(10.dp),
+                fontFamily = CustomFontFamily,
+                textAlign = TextAlign.Center,
+                color = Color.White
             )
 
-            // 검색 필드와 버튼을 같은 줄에 배치
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -88,12 +97,12 @@ fun MapSetupScreen(
                 TextField(
                     value = searchText,
                     onValueChange = { searchText = it },
-                    placeholder = { Text(text = "검색: 대한민국") },
+                    placeholder = { Text(text = "Location: Korea") },
                     modifier = Modifier
                         .weight(1f) // Row 내에서 가변 너비 설정
                         .padding(end = 8.dp), // 버튼과 간격 추가
                     colors = TextFieldDefaults.textFieldColors(
-                        containerColor = Color.LightGray, // 배경색 설정
+                        containerColor = Color(0xFFFFF9C4), // 배경색 설정
                         cursorColor = Color.Black, // 커서 색상
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
@@ -121,11 +130,16 @@ fun MapSetupScreen(
                     modifier = Modifier
                         .height(56.dp), // TextField와 동일한 높이 설정
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFD6D6D6),
+                        containerColor = Color(0xFFFFF59D),
                         contentColor = Color.Black
                     )
                 ) {
-                    Text(text = "검색")
+                    Text(
+                        text = "검색",
+                        fontWeight = FontWeight.Bold, // 굵게 설정
+                        fontSize = 16.sp // 원하는 크기로 설정 (예: 20sp)
+                    )
+
                 }
             }
             TextField(
@@ -136,7 +150,7 @@ fun MapSetupScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 colors = TextFieldDefaults.textFieldColors(
-                    containerColor = Color.LightGray, // 배경색 설정
+                    containerColor = Color(0xFFFFF9C4), // 배경색 설정
                     cursorColor = Color.Black, // 커서 색상
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent
@@ -151,8 +165,7 @@ fun MapSetupScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 8.dp),
                 textAlign = TextAlign.Start,
-                color = Color.Gray
-            )
+                color = Color.White            )
 
             Box(
                 modifier = Modifier
@@ -199,7 +212,8 @@ fun MapSetupScreen(
                 contentColor = Color.Black // 텍스트 색상
             )
         ) {
-            Text(text = "확인")
+            Text(text = "확인"
+            )
         }
     }
 

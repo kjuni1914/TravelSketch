@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.storage.FirebaseStorage
+import com.travelsketch.api.GPTApiClient
 import com.travelsketch.data.dao.FirebaseClient
 import com.travelsketch.data.dao.FirebaseRepository
 import com.travelsketch.data.model.BoxData
@@ -391,6 +392,50 @@ class CanvasViewModel : ViewModel() {
                 boxIdMap[finalBox.id] = finalBox
                 loadImage(downloadUrl)
 
+                // GPT API 호출 (영수증인 경우)
+                if (isReceipt) {
+                    GPTApiClient.sendImage(
+                        imageUri = uri,
+                        context = context!!,
+                        apiKey = "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" // API 키를 설정하세요
+                    ) { gptResult ->
+                        Log.d("CanvasViewModel", "GPT API Result: $gptResult")
+
+                        // 텍스트 박스 생성
+                        val textBox = BoxData(
+                            id = UUID.randomUUID().toString(),
+                            boxX = finalBox.boxX,
+                            boxY = finalBox.boxY + (finalBox.height ?: 0) + 20, // 이미지 아래에 배치
+                            width = finalBox.width,
+                            height = 200, // 텍스트 박스의 높이를 설정
+                            type = BoxType.TEXT.toString(),
+                            data = gptResult
+                        )
+
+                        viewModelScope.launch {
+                            try {
+                                FirebaseClient.writeBoxData(
+                                    canvasId.value,
+                                    textBox.id,
+                                    textBox
+                                )
+                                // 캔버스에 텍스트 박스 추가
+                                boxes.add(textBox)
+                                boxIdMap[textBox.id] = textBox
+                                invalidateCanvasState.value = !invalidateCanvasState.value
+                            } catch (e: Exception) {
+                                Log.e("CanvasViewModel", "Error saving text box to Firebase", e)
+                            }
+                        }
+
+                        // 캔버스에 텍스트 박스 추가
+                        boxes.add(textBox)
+                        boxIdMap[textBox.id] = textBox
+
+                        invalidateCanvasState.value = !invalidateCanvasState.value
+                    }
+                }
+
             } catch (e: Exception) {
                 Log.e("asdfasdfasdf", "Error in createImageBox", e)
                 tempBox?.let {
@@ -519,7 +564,7 @@ class CanvasViewModel : ViewModel() {
                 Log.d("asdfasdfasdf", "Starting video box creation")
 
                 val width = 600
-                val height = 400
+                val height = 800
                 val boxId = UUID.randomUUID().toString()
 
                 tempBox = BoxData(

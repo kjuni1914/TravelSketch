@@ -247,10 +247,10 @@ fun MapViewScreen(
                         .weight(1f)
                         .padding(end = 8.dp),
                     colors = TextFieldDefaults.textFieldColors(
-                        containerColor = Color.LightGray,
+                        containerColor = Color.White,
                         cursorColor = Color.Black,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
+                        focusedIndicatorColor = Color(0xFF2196F3),
+                        unfocusedIndicatorColor = Color(0xFF2196F3)
                     ),
                     shape = RoundedCornerShape(8.dp)
                 )
@@ -274,8 +274,8 @@ fun MapViewScreen(
                     modifier = Modifier.height(56.dp),
 
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFD6D6D6),
-                        contentColor = Color.Black
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF2196F3)
                     )
                 ) {
                     Text(

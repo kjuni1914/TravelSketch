@@ -63,8 +63,9 @@ class ListViewActivity : ComponentActivity() {
                 onToggleVisibility = { canvasId, newVisibility ->
                     viewModel.toggleCanvasVisibility(canvasId, newVisibility,userId)
                 },
-                onNavigateToCanvas = { canvasId -> navigateToCanvas(canvasId) },
-                onUpdateTitle = { canvasId, newTitle ->
+                onNavigateToCanvas = { canvasId, isEditable ->
+                    navigateToCanvas(canvasId, isEditable) // editable 상태 포함
+                },                onUpdateTitle = { canvasId, newTitle ->
                     viewModel.updateCanvasTitle(canvasId, newTitle) // 제목 업데이트 처리
                 },
                 onUpdateCoverImage = { canvasId ->
@@ -121,12 +122,14 @@ class ListViewActivity : ComponentActivity() {
         startActivity(intent)
     }
 
-    private fun navigateToCanvas(canvasId: String) {
+    private fun navigateToCanvas(canvasId: String, isEditable: Boolean) {
         val intent = Intent(this, CanvasActivity::class.java).apply {
             putExtra("CANVAS_ID", canvasId)
+            putExtra("EDITABLE", isEditable) // Pass editable flag
         }
         startActivity(intent)
     }
+
 
     companion object {
         private const val REQUEST_IMAGE_PICK = 1

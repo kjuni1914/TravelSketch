@@ -44,6 +44,8 @@ class CanvasActivity : ComponentActivity() {
         val canvasViewModel = ViewModelProvider(this)[CanvasViewModel::class.java]
         canvasViewModel.setContext(this)
         val canvasId = intent.getStringExtra("CANVAS_ID")
+        val isEditable = intent.getBooleanExtra("EDITABLE", false) // editable 상태 받기
+
         if (canvasId == null) {
             finish()
             return
@@ -134,24 +136,27 @@ class CanvasActivity : ComponentActivity() {
                     CanvasScreen(
                         viewModel = canvasViewModel,
                         onTapForBox = { canvasPos ->
-                            if (isEditing.value) {
+                            if (isEditing.value && isEditable) { // Allow box creation only if editable
                                 canvasViewModel.createBox(canvasPos.x, canvasPos.y)
                             }
-                        }
+                        },
+                        editable = isEditable // Pass the editable state to CanvasScreen
                     )
                 },
                 button = {
-                    Button(
-                        onClick = {
-                            isEditing.value = !isEditing.value
-                            canvasViewModel.toggleIsEditable()
+                    if (isEditable) { // Show Edit button only when editable is true
+                        Button(
+                            onClick = {
+                                isEditing.value = !isEditing.value
+                                canvasViewModel.toggleIsEditable()
+                            }
+                        ) {
+                            Text(if (isEditing.value) "Done" else "Edit")
                         }
-                    ) {
-                        Text(if (isEditing.value) "Done" else "Edit")
                     }
                 },
                 editor = {
-                    if (isEditing.value) {
+                    if (isEditing.value && isEditable) {
                         Editor(
                             canvasViewModel = canvasViewModel,
                             showDialog = showDialog,

@@ -41,7 +41,7 @@ fun ListViewScreen(
     onNavigateToMapSetup: () -> Unit,
     onAddFriend: (String) -> Unit, // 친구 추가 콜백\
     onToggleVisibility: (String, Boolean) -> Unit, // visibility 변경 콜백 추가
-    onNavigateToCanvas: (String) -> Unit,
+    onNavigateToCanvas: (String, Boolean) -> Unit, // editable 상태 전달 추가
     onUpdateTitle: (String, String) -> Unit,
     onUpdateCoverImage: (String) -> Unit, // Update Cover Image 콜백 추가
     onDeleteCanvas: (String) -> Unit // Delete Canvas 콜백 추가
@@ -89,7 +89,7 @@ fun ListViewScreen(
                     isCurrentUserCanvas = true, // 현재 사용자의 캔버스
                     isVisible = item.isVisible, // 초기 is_visible 값
                     onToggleVisibility = onToggleVisibility,
-                    onNavigateToCanvas = { onNavigateToCanvas(item.canvasId) },
+                    onNavigateToCanvas = { onNavigateToCanvas(item.canvasId, true) }, // editable = true 전달
                     onUpdateTitle = onUpdateTitle,
                     onUpdateCoverImage = { onUpdateCoverImage(item.canvasId) }, // Update Cover Image 전달
                     onDeleteCanvas = { onDeleteCanvas(item.canvasId) } // Delete Canvas 전달
@@ -117,7 +117,7 @@ fun ListViewScreen(
                     isCurrentUserCanvas = false, // 친구의 캔버스
                     isVisible = true, // 초기 is_visible 값
                     onToggleVisibility = { _, _ -> }, // 비어 있는 콜백 전달
-                    onNavigateToCanvas = { onNavigateToCanvas(item.canvasId) },
+                    onNavigateToCanvas = { onNavigateToCanvas(item.canvasId, false) }, // editable = false 전달
                     onUpdateTitle = onUpdateTitle, // onUpdateTitle 전달
                     onUpdateCoverImage = {}, // 친구 캔버스에서는 사용하지 않음
                     onDeleteCanvas = {} // 친구 캔버스에서는 사용하지 않음
@@ -136,7 +136,8 @@ fun ListViewScreen(
                 .border(width = 0.5.dp, color = Color.Black, shape = RoundedCornerShape(25.dp)), // 테두리 추가
 
         colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFFFF9C4), // 밝은 파란색
+                containerColor = Color(0xFFFFFDE7)
+            , // 밝은 파란색
                 contentColor = Color.Black // 텍스트 색상
             )
         ) {
