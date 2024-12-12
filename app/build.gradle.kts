@@ -61,6 +61,9 @@ android {
 }
 
 dependencies {
+    implementation("androidx.glance:glance:1.1.1")
+    implementation("androidx.glance:glance-appwidget:1.1.1")
+    implementation("androidx.glance:glance-wear-tiles:1.0.0-alpha05")
     implementation("com.itextpdf:itextpdf:5.0.6")
     implementation("com.squareup.okhttp3:okhttp:4.9.0")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.0")

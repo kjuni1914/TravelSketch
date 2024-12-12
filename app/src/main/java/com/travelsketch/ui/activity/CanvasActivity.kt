@@ -1,17 +1,8 @@
 package com.travelsketch.ui.activity
 
 import android.Manifest
-import android.app.Activity
-import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.pdf.PdfDocument
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -23,12 +14,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
-import com.travelsketch.data.model.BoxType
 import com.travelsketch.ui.composable.CanvasScreen
 import com.travelsketch.ui.composable.Editor
 import com.travelsketch.ui.composable.ImageSourceDialog
@@ -38,10 +26,6 @@ import com.travelsketch.ui.composable.VideoSourceDialog
 import com.travelsketch.ui.layout.CanvasEditLayout
 import com.travelsketch.viewmodel.CanvasViewModel
 import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 
 class CanvasActivity : ComponentActivity() {
     private val CAMERA_PERMISSION_REQUEST_CODE = 100
@@ -63,13 +47,15 @@ class CanvasActivity : ComponentActivity() {
 
         val canvasViewModel = ViewModelProvider(this)[CanvasViewModel::class.java]
         canvasViewModel.setContext(this)
+
         val canvasId = intent.getStringExtra("CANVAS_ID")
+
         if (canvasId == null) {
             finish()
             return
         }
 
-        canvasViewModel.initializeCanvas(canvasId)
+        canvasViewModel.initializeCanvas(canvasId.toString())
 
         galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri?.let {
@@ -218,7 +204,6 @@ class CanvasActivity : ComponentActivity() {
         canvasViewModel.sharePdfFile(
             this,
             path
-//            "/storage/emulated/0/Android/data/com.travelsketch/files/myPDF.pdf"
         )
     }
 }
