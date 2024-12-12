@@ -725,7 +725,8 @@ class CanvasViewModel : ViewModel() {
     fun createPDF(): String? {
         val pdfDocument = PdfDocument()
         val paint = Paint().apply {
-            textSize = 30f
+            textSize = 90f
+            isFilterBitmap = true
         }
 
         val pageInfo = PdfDocument.PageInfo.Builder(
@@ -741,11 +742,19 @@ class CanvasViewModel : ViewModel() {
             if (box.type == BoxType.TEXT.toString())
                 canvas.drawText(box.data, box.boxX.toFloat(), box.boxY.toFloat(), paint)
             else if (box.type == BoxType.IMAGE.toString()) {
-                if (box.data in bitmaps.keys) {
+                if (box.data.startsWith("http") && bitmaps.containsKey(box.data)) {
+                    Log.d("TEST", "감지 ${bitmaps[box.data]}")
+                    val bitmap = bitmaps[box.data]
+                    val scaledBitmap = Bitmap.createScaledBitmap(
+                        bitmap!!,
+                        dpToPx(box.width!!.toFloat()), dpToPx(box.height!!.toFloat()),
+                        false
+                    )
+
                     canvas.drawBitmap(
-                        bitmaps[box.data]!!,
-                        box.boxX.toFloat(),
-                        box.boxY.toFloat(),
+                        scaledBitmap,
+                        dpToPx(box.boxX.toFloat()/(2.6f)).toFloat(),
+                        dpToPx(box.boxY.toFloat()/7).toFloat(),
                         paint
                     )
                 }
