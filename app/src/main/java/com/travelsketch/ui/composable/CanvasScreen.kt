@@ -11,6 +11,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -25,13 +26,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.zIndex
+import com.travelsketch.R
 import com.travelsketch.data.model.BoxData
 import com.travelsketch.data.model.BoxType
 import com.travelsketch.data.model.ViewMode
@@ -42,6 +46,9 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 
 data class CanvasState(
     var scale: Float = 1f,
@@ -54,10 +61,17 @@ data class CanvasState(
 fun CanvasScreen(
     viewModel: CanvasViewModel,
     onTapForBox: (Offset) -> Unit,
-    editable: Boolean // Add editable flag
+    editable: Boolean
 ) {
     var canvasState by remember { mutableStateOf(CanvasState()) }
     var isDragging by remember { mutableStateOf(false) }
+
+    // **추가한 로직 시작**
+    var isRotating by remember { mutableStateOf(false) }
+    var rotateStartAngle by remember { mutableStateOf(0f) }
+    var initialDegree by remember { mutableStateOf(0) }
+    // **추가한 로직 끝**
+
     var dragStartRelativeOffset by remember { mutableStateOf(Offset.Zero) }
     val selectedBoxPosition = remember { mutableStateOf<Offset?>(null) }
     val invalidateCanvasState = viewModel.invalidateCanvasState
@@ -140,16 +154,16 @@ fun CanvasScreen(
         return canvasPos * canvasState.scale + canvasState.offset
     }
 
-    fun DrawScope.drawBox(box: BoxData) {
-        if (box.type == BoxType.IMAGE.toString()) {
-            val imageUrl = box.data
-            val screenPos = canvasToScreen(Offset(box.boxX.toFloat(), box.boxY.toFloat()))
+    fun rotatePoint(x: Float, y: Float, cx: Float, cy: Float, angleDeg: Float): Pair<Float,Float> {
+        val angleRad = Math.toRadians(angleDeg.toDouble()).toFloat()
+        val dx = x - cx
+        val dy = y - cy
+        val rx = dx * cos(angleRad) - dy * sin(angleRad)
+        val ry = dx * sin(angleRad) + dy * cos(angleRad)
+        return Pair(cx + rx, cy + ry)
+    }
 
-            Log.d("CanvasScreen", "Drawing box: ${box.id}")
-            Log.d("CanvasScreen", "URL: $imageUrl")
-            Log.d("CanvasScreen", "Bitmap available: ${localBitmaps.containsKey(imageUrl)}")
-            Log.d("CanvasScreen", "Loading state: ${loadingStates[imageUrl]}")
-        }
+    fun DrawScope.drawBox(box: BoxData) {
         val isSelectedAndDragging = (box == viewModel.selected.value && isDragging && selectedBoxPosition.value != null)
 
         val (boxX, boxY) = if (isSelectedAndDragging) {
@@ -158,29 +172,27 @@ fun CanvasScreen(
             Offset(box.boxX.toFloat(), box.boxY.toFloat())
         }
 
+        val screenPos = canvasToScreen(Offset(boxX, boxY))
+        val scaledWidth = (box.width ?: 0) * canvasState.scale
+        val scaledHeight = (box.height ?: 0) * canvasState.scale
 
+        // **추가한 로직 시작**: 회전 적용
+        drawIntoCanvas { canvas ->
+            val cx = screenPos.x + scaledWidth / 2
+            val cy = screenPos.y + scaledHeight / 2
+            canvas.save()
+            canvas.rotate(box.degree.toFloat(), cx, cy)
+            // **추가한 로직 끝**
 
-
-        when (box.type) {
-            BoxType.IMAGE.toString(), BoxType.RECEIPT.toString() -> {
-                val mediaUrl = box.data
-                Log.d("CanvasScreen", "Processing ${box.type} box: ${box.id}, URL: $mediaUrl")
-
-                val screenPos = canvasToScreen(Offset(boxX, boxY))
-                val scaledWidth = (box.width ?: 0) * canvasState.scale
-                val scaledHeight = (box.height ?: 0) * canvasState.scale
-
-                Log.d("CanvasScreen", "Drawing ${box.type} box at $screenPos with size ${scaledWidth}x${scaledHeight}")
-                Log.d("CanvasScreen", "Local bitmap available: ${localBitmaps[mediaUrl] != null}")
-
-                if (mediaUrl == "uploading") {
-                    // Draw uploading state
-                    drawRect(
-                        color = Color.Gray.copy(alpha = 0.3f),
-                        topLeft = screenPos,
-                        size = Size(scaledWidth, scaledHeight)
-                    )
-                    drawIntoCanvas { canvas ->
+            when (box.type) {
+                BoxType.IMAGE.toString(), BoxType.RECEIPT.toString() -> {
+                    val mediaUrl = box.data
+                    if (mediaUrl == "uploading") {
+                        drawRect(
+                            color = Color.Gray.copy(alpha = 0.3f),
+                            topLeft = screenPos,
+                            size = Size(scaledWidth, scaledHeight)
+                        )
                         val paint = Paint().apply {
                             color = android.graphics.Color.BLACK
                             textSize = 40f * canvasState.scale
@@ -192,13 +204,9 @@ fun CanvasScreen(
                             screenPos.y + scaledHeight / 2,
                             paint
                         )
-                    }
-                } else {
-                    // Draw loaded bitmap or loading state
-                    localBitmaps[mediaUrl]?.let { bitmap ->
-                        try {
-                            Log.d("CanvasScreen", "Drawing bitmap at $screenPos")
-                            drawIntoCanvas { canvas ->
+                    } else {
+                        localBitmaps[mediaUrl]?.let { bitmap ->
+                            try {
                                 val destinationRect = android.graphics.RectF(
                                     screenPos.x,
                                     screenPos.y,
@@ -215,9 +223,6 @@ fun CanvasScreen(
                                     destinationRect,
                                     paint
                                 )
-                                Log.d("CanvasScreen", "Successfully drew bitmap to canvas")
-
-                                // Draw border
                                 val borderPaint = Paint().apply {
                                     style = Paint.Style.STROKE
                                     strokeWidth = 2f * canvasState.scale
@@ -230,24 +235,20 @@ fun CanvasScreen(
                                     screenPos.y + scaledHeight,
                                     borderPaint
                                 )
+                            } catch (e: Exception) {
+                                Log.e("CanvasScreen", "Failed to draw bitmap", e)
+                                drawRect(
+                                    color = Color.Red.copy(alpha = 0.3f),
+                                    topLeft = screenPos,
+                                    size = Size(scaledWidth, scaledHeight)
+                                )
                             }
-                        } catch (e: Exception) {
-                            Log.e("CanvasScreen", "Failed to draw bitmap", e)
+                        } ?: run {
                             drawRect(
-                                color = Color.Red.copy(alpha = 0.3f),
+                                color = Color.LightGray.copy(alpha = 0.3f),
                                 topLeft = screenPos,
                                 size = Size(scaledWidth, scaledHeight)
                             )
-                        }
-                    } ?: run {
-                        // Show loading state when bitmap is not yet loaded
-                        Log.d("CanvasScreen", "Bitmap not found in cache, showing loading state")
-                        drawRect(
-                            color = Color.LightGray.copy(alpha = 0.3f),
-                            topLeft = screenPos,
-                            size = Size(scaledWidth, scaledHeight)
-                        )
-                        drawIntoCanvas { canvas ->
                             val paint = Paint().apply {
                                 color = android.graphics.Color.BLACK
                                 textSize = 40f * canvasState.scale
@@ -262,129 +263,18 @@ fun CanvasScreen(
                         }
                     }
                 }
-            }
 
-            BoxType.IMAGE.toString() -> {
-                val imageUrl = box.data
-                Log.d("CanvasScreen", "Processing image box: ${box.id}, URL: $imageUrl")
-
-                val screenPos = canvasToScreen(Offset(boxX, boxY))
-                val scaledWidth = (box.width ?: 0) * canvasState.scale
-                val scaledHeight = (box.height ?: 0) * canvasState.scale
-
-                Log.d("CanvasScreen", "Drawing IMAGE box at $screenPos with size ${scaledWidth}x${scaledHeight}")
-                Log.d("CanvasScreen", "Local bitmap available: ${localBitmaps[imageUrl] != null}")
-
-                if (imageUrl == "uploading") {
-                    drawRect(
-                        color = Color.Gray.copy(alpha = 0.3f),
-                        topLeft = screenPos,
-                        size = Size(scaledWidth, scaledHeight)
-                    )
-                    drawIntoCanvas { canvas ->
-                        val paint = Paint().apply {
-                            color = android.graphics.Color.BLACK
-                            textSize = 40f * canvasState.scale
-                            textAlign = Paint.Align.CENTER
-                        }
-                        canvas.nativeCanvas.drawText(
-                            "IMAGE\nUploading...",
-                            screenPos.x + scaledWidth / 2,
-                            screenPos.y + scaledHeight / 2,
-                            paint
-                        )
+                BoxType.VIDEO.toString() -> {
+                    val videoUrl = box.data
+                    val bitmap = localBitmaps[videoUrl]
+                    if (viewModel.selected.value == box) {
+                        // 비디오 플레이어 표시 시 썸네일 생략
+                        canvas.restore()
+                        return
                     }
-                } else {
-                    localBitmaps[imageUrl]?.let { bitmap ->
+
+                    if (bitmap != null) {
                         try {
-                            Log.d("CanvasScreen", "Drawing bitmap at $screenPos")
-                            drawIntoCanvas { canvas ->
-                                val destinationRect = android.graphics.RectF(
-                                    screenPos.x,
-                                    screenPos.y,
-                                    screenPos.x + scaledWidth,
-                                    screenPos.y + scaledHeight
-                                )
-                                val paint = Paint().apply {
-                                    isAntiAlias = true
-                                    isFilterBitmap = true
-                                }
-                                canvas.nativeCanvas.drawBitmap(
-                                    bitmap,
-                                    null,
-                                    destinationRect,
-                                    paint
-                                )
-                                Log.d("CanvasScreen", "Successfully drew bitmap to canvas")
-                            }
-                        } catch (e: Exception) {
-                            Log.e("CanvasScreen", "Failed to draw bitmap", e)
-                            drawRect(
-                                color = Color.Red.copy(alpha = 0.3f),
-                                topLeft = screenPos,
-                                size = Size(scaledWidth, scaledHeight)
-                            )
-                        }
-                    } ?: run {
-                        Log.d("CanvasScreen", "Bitmap not found in cache, showing loading state")
-                        drawRect(
-                            color = Color.LightGray.copy(alpha = 0.3f),
-                            topLeft = screenPos,
-                            size = Size(scaledWidth, scaledHeight)
-                        )
-                        drawIntoCanvas { canvas ->
-                            val paint = Paint().apply {
-                                color = android.graphics.Color.BLACK
-                                textSize = 40f * canvasState.scale
-                                textAlign = Paint.Align.CENTER
-                            }
-                            canvas.nativeCanvas.drawText(
-                                "Loading...",
-                                screenPos.x + scaledWidth / 2,
-                                screenPos.y + scaledHeight / 2,
-                                paint
-                            )
-                        }
-                    }
-                }
-
-                // 이미지 테두리 그리기
-                drawIntoCanvas { canvas ->
-                    val borderPaint = Paint().apply {
-                        style = Paint.Style.STROKE
-                        strokeWidth = 2f * canvasState.scale
-                        color = android.graphics.Color.BLACK
-                    }
-                    canvas.nativeCanvas.drawRect(
-                        screenPos.x,
-                        screenPos.y,
-                        screenPos.x + scaledWidth,
-                        screenPos.y + scaledHeight,
-                        borderPaint
-                    )
-                }
-            }
-
-            BoxType.VIDEO.toString() -> {
-                val videoUrl = box.data
-                Log.d("CanvasScreen", "Processing video box: ${box.id}, URL: $videoUrl")
-
-                val screenPos = canvasToScreen(Offset(boxX, boxY))
-                val scaledWidth = (box.width ?: 0) * canvasState.scale
-                val scaledHeight = (box.height ?: 0) * canvasState.scale
-
-
-                if (viewModel.selected.value == box) {
-                    // 비디오 플레이어 표시 시 썸네일 생략
-                    return
-                }
-
-                val bitmap = localBitmaps[videoUrl]
-
-                if (bitmap != null) {
-                    try {
-                        Log.d("CanvasScreen", "Drawing video thumbnail at $screenPos")
-                        drawIntoCanvas { canvas ->
                             val destinationRect = android.graphics.RectF(
                                 screenPos.x,
                                 screenPos.y,
@@ -401,24 +291,20 @@ fun CanvasScreen(
                                 destinationRect,
                                 paint
                             )
-                            Log.d("CanvasScreen", "Successfully drew video thumbnail")
+                        } catch (e: Exception) {
+                            Log.e("CanvasScreen", "Failed to draw video thumbnail", e)
+                            drawRect(
+                                color = Color.Red.copy(alpha = 0.3f),
+                                topLeft = screenPos,
+                                size = Size(scaledWidth, scaledHeight)
+                            )
                         }
-                    } catch (e: Exception) {
-                        Log.e("CanvasScreen", "Failed to draw video thumbnail", e)
+                    } else {
                         drawRect(
-                            color = Color.Red.copy(alpha = 0.3f),
+                            color = Color.LightGray.copy(alpha = 0.3f),
                             topLeft = screenPos,
                             size = Size(scaledWidth, scaledHeight)
                         )
-                    }
-                } else {
-                    Log.d("CanvasScreen", "Video thumbnail not found, showing loading state")
-                    drawRect(
-                        color = Color.LightGray.copy(alpha = 0.3f),
-                        topLeft = screenPos,
-                        size = Size(scaledWidth, scaledHeight)
-                    )
-                    drawIntoCanvas { canvas ->
                         val paint = Paint().apply {
                             color = android.graphics.Color.BLACK
                             textSize = 40f * canvasState.scale
@@ -432,31 +318,28 @@ fun CanvasScreen(
                         )
                     }
                 }
-            }
-            BoxType.TEXT.toString() -> {
-                drawIntoCanvas { canvas ->
-                    val screenPos = canvasToScreen(Offset(boxX, boxY))
-                    val scaledWidth = box.width!! * canvasState.scale
-                    val scaledHeight = box.height!! * canvasState.scale
-
-                    val scaledPaint = Paint(viewModel.defaultBrush.value).apply {
+                BoxType.TEXT.toString() -> {
+                    val paint = Paint(viewModel.defaultBrush.value).apply {
                         textSize = viewModel.defaultBrush.value.textSize * canvasState.scale
                         textAlign = Paint.Align.CENTER
                     }
-
                     canvas.nativeCanvas.drawText(
                         box.data ?: "",
                         screenPos.x + scaledWidth / 2,
-                        screenPos.y + (scaledHeight / 2 - (scaledPaint.descent() + scaledPaint.ascent()) / 2),
-                        scaledPaint
+                        screenPos.y + (scaledHeight / 2 - (paint.descent() + paint.ascent()) / 2),
+                        paint
                     )
                 }
             }
+
+            // **추가한 로직 시작**: 회전 적용 후 복원
+            canvas.restore()
+            // **추가한 로직 끝**
         }
     }
 
     fun DrawScope.drawSelectionHandles(box: BoxData) {
-        val (boxX, boxY) = if (box == viewModel.selected.value && isDragging && selectedBoxPosition.value != null) {
+        val (boxX, boxY) = if (box == viewModel.selected.value && (isDragging || isRotating) && selectedBoxPosition.value != null) {
             selectedBoxPosition.value!!
         } else {
             Offset(box.boxX.toFloat(), box.boxY.toFloat())
@@ -466,14 +349,37 @@ fun CanvasScreen(
             val screenPos = canvasToScreen(Offset(boxX, boxY))
             val scaledWidth = box.width!! * canvasState.scale
             val scaledHeight = box.height!! * canvasState.scale
-            val handleRadius = 5f * canvasState.scale
+
+            val cx = screenPos.x + scaledWidth / 2
+            val cy = screenPos.y + scaledHeight / 2
+
+            // 회전 변환
+            canvas.save()
+            canvas.rotate(box.degree.toFloat(), cx, cy)
+
+            val handleRadius = 20f * canvasState.scale
+            // 회전 손잡이: 박스 상단 중앙 위로 조금 떨어진 곳
+            val handleX = cx
+            val handleY = cy - scaledHeight/2 - 50f * canvasState.scale
+
+            // 핸들 그리기
+            val handlePaint = Paint().apply {
+                style = Paint.Style.FILL
+                color = android.graphics.Color.GREEN
+            }
+            canvas.nativeCanvas.drawCircle(handleX, handleY, handleRadius, handlePaint)
+
+            // 모서리 핸들
+            val borderHandleRadius = 5f * canvasState.scale
 
             canvas.nativeCanvas.run {
-                drawCircle(screenPos.x, screenPos.y, handleRadius, viewModel.selectBrush.value)
-                drawCircle(screenPos.x, screenPos.y + scaledHeight, handleRadius, viewModel.selectBrush.value)
-                drawCircle(screenPos.x + scaledWidth, screenPos.y, handleRadius, viewModel.selectBrush.value)
-                drawCircle(screenPos.x + scaledWidth, screenPos.y + scaledHeight, handleRadius, viewModel.selectBrush.value)
+                drawCircle(screenPos.x, screenPos.y, borderHandleRadius, viewModel.selectBrush.value)
+                drawCircle(screenPos.x, screenPos.y + scaledHeight, borderHandleRadius, viewModel.selectBrush.value)
+                drawCircle(screenPos.x + scaledWidth, screenPos.y, borderHandleRadius, viewModel.selectBrush.value)
+                drawCircle(screenPos.x + scaledWidth, screenPos.y + scaledHeight, borderHandleRadius, viewModel.selectBrush.value)
             }
+
+            canvas.restore()
         }
     }
 
@@ -482,35 +388,47 @@ fun CanvasScreen(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(16.dp)
-                .zIndex(1f), // Ensure the buttons are above other components
-            horizontalArrangement = Arrangement.spacedBy(16.dp) // 버튼 간 간격 설정
-        )
-        {
-            androidx.compose.material3.Button(onClick = {
-                viewModel.currentViewMode.value =  ViewMode.ALL
-                if (viewModel.currentViewMode.value == ViewMode.ALL) {
-                    viewModel.arrangeMediaBoxes() // 미디어 박스 정렬 및 위치 재배치
-                }
-            }) {
-                Text(text = "All")
-            }
-            androidx.compose.material3.Button(onClick = {
-                viewModel.currentViewMode.value =  ViewMode.MEDIA_ONLY
-                if (viewModel.currentViewMode.value == ViewMode.MEDIA_ONLY) {
-                    viewModel.arrangeMediaBoxes() // 미디어 박스 정렬 및 위치 재배치
-                }
-            }) {
-                Text(text = "Media")
-            }
-            androidx.compose.material3.Button(onClick = {
-                viewModel.currentViewMode.value =  ViewMode.RECEIPTS_ONLY
-                if (viewModel.currentViewMode.value == ViewMode.RECEIPTS_ONLY) {
-                    viewModel.arrangeReceiptBoxes() // 미디어 박스 정렬 및 위치 재배치
-                }
-            }) {
-                Text(text = "Receipt")
-            }
+                .zIndex(1f),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            androidx.compose.foundation.Image(
+                painter = painterResource(id = R.drawable.all_button_icon),
+                contentDescription = "All",
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable {
+                        viewModel.currentViewMode.value =  ViewMode.ALL
+                        if (viewModel.currentViewMode.value == ViewMode.ALL) {
+                            viewModel.arrangeMediaBoxes()
+                        }
+                    }
+            )
+            androidx.compose.foundation.Image(
+                painter = painterResource(id = R.drawable.media_button_icon),
+                contentDescription = "Media",
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable {
+                        viewModel.currentViewMode.value =  ViewMode.MEDIA_ONLY
+                        if (viewModel.currentViewMode.value == ViewMode.MEDIA_ONLY) {
+                            viewModel.arrangeMediaBoxes()
+                        }
+                    }
+            )
+            androidx.compose.foundation.Image(
+                painter = painterResource(id = R.drawable.receipt_button_icon),
+                contentDescription = "Receipt",
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable {
+                        viewModel.currentViewMode.value =  ViewMode.RECEIPTS_ONLY
+                        if (viewModel.currentViewMode.value == ViewMode.RECEIPTS_ONLY) {
+                            viewModel.arrangeReceiptBoxes()
+                        }
+                    }
+            )
         }
+
         val boxesToRender = when (viewModel.currentViewMode.value) {
             ViewMode.MEDIA_ONLY -> viewModel.arrangeMediaBoxes()
             ViewMode.RECEIPTS_ONLY -> viewModel.arrangeReceiptBoxes()
@@ -531,7 +449,7 @@ fun CanvasScreen(
                 .then(if (invalidateCanvasState.value) Modifier else Modifier)
                 .pointerInput(Unit) {
                     detectTransformGestures { centroid, pan, zoom, _ ->
-                        if (!isDragging) {
+                        if (!isDragging && !isRotating) {
                             val oldScale = canvasState.scale
                             val newScale = (oldScale * zoom).coerceIn(0.1f, 5f)
 
@@ -553,47 +471,84 @@ fun CanvasScreen(
                 .pointerInput(Unit) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = { offset ->
-                            if (!editable) return@detectDragGesturesAfterLongPress // Skip drag if not editable
+                            if (!editable) return@detectDragGesturesAfterLongPress
 
                             val canvasPos = screenToCanvas(offset)
-                            val boxesToShow = if (viewModel.currentViewMode.value == ViewMode.MEDIA_ONLY) {
-                                viewModel.boxes.filter { it.type in listOf(BoxType.IMAGE.toString(), BoxType.VIDEO.toString()) }
-                            } else if (viewModel.currentViewMode.value == ViewMode.RECEIPTS_ONLY){
-                                viewModel.arrangeReceiptBoxes()
-                            }else{
-                                viewModel.boxes
-                            }
                             val hitBox = viewModel.boxes.findLast { box ->
                                 val boxPos = Offset(box.boxX.toFloat(), box.boxY.toFloat())
                                 val boxSize = Size(box.width!!.toFloat(), box.height!!.toFloat())
+                                val cx = boxPos.x + boxSize.width/2
+                                val cy = boxPos.y + boxSize.height/2
 
-                                val isInXRange = canvasPos.x >= boxPos.x &&
-                                        canvasPos.x <= boxPos.x + boxSize.width
-                                val isInYRange = canvasPos.y >= boxPos.y &&
-                                        canvasPos.y <= boxPos.y + boxSize.height
+                                // 회전 핸들 위치 계산
+                                val handleDist = 50f
+                                val handleX = cx
+                                val handleY = cy - boxSize.height/2 - (handleDist / canvasState.scale)
 
-                                isInXRange && isInYRange
-                            }
+                                // 박스가 회전했으니 역회전해서 포인터를 비교
+                                val angleRad = Math.toRadians(box.degree.toDouble())
+                                val sinA = sin(angleRad).toFloat()
+                                val cosA = cos(angleRad).toFloat()
 
-                            if (hitBox != null) {
-                                isDragging = true
-                                viewModel.select(hitBox)
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                    vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
-                                } else {
-                                    @Suppress("DEPRECATION")
-                                    vibrator.vibrate(100)
+                                // 역회전한 좌표로 변경
+                                val dx = (canvasPos.x - cx)
+                                val dy = (canvasPos.y - cy)
+                                val rx = dx * cosA + dy * sinA
+                                val ry = -dx * sinA + dy * cosA
+
+                                val handleDx = (handleX - cx)
+                                val handleDy = (handleY - cy)
+                                val handleRadius = 20f
+
+                                // 역회전한 핸들 좌표
+                                val rxHandle = handleDx
+                                val ryHandle = handleDy
+
+                                val distToHandle = ((rx - rxHandle)*(rx - rxHandle) + (ry - ryHandle)*(ry - ryHandle))
+                                val inHandle = distToHandle <= (handleRadius*handleRadius)/(canvasState.scale*canvasState.scale)
+
+                                val isInXRange = canvasPos.x >= boxPos.x && canvasPos.x <= boxPos.x + boxSize.width
+                                val isInYRange = canvasPos.y >= boxPos.y && canvasPos.y <= boxPos.y + boxSize.height
+
+                                if (inHandle) {
+                                    // 회전 모드 진입
+                                    isRotating = true
+                                    viewModel.select(box)
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                        vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+                                    } else {
+                                        @Suppress("DEPRECATION")
+                                        vibrator.vibrate(100)
+                                    }
+                                    val angle = atan2(dy, dx) * (180f / Math.PI.toFloat())
+                                    rotateStartAngle = angle
+                                    initialDegree = box.degree
+                                    selectedBoxPosition.value = Offset(box.boxX.toFloat(), box.boxY.toFloat())
+                                    return@findLast true
+                                } else if (isInXRange && isInYRange) {
+                                    // 드래그 모드 진입
+                                    isDragging = true
+                                    viewModel.select(box)
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                        vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+                                    } else {
+                                        @Suppress("DEPRECATION")
+                                        vibrator.vibrate(100)
+                                    }
+
+                                    dragStartRelativeOffset = Offset(
+                                        x = canvasPos.x - box.boxX.toFloat(),
+                                        y = canvasPos.y - box.boxY.toFloat()
+                                    )
+                                    selectedBoxPosition.value = Offset(box.boxX.toFloat(), box.boxY.toFloat())
+                                    return@findLast true
                                 }
 
-                                dragStartRelativeOffset = Offset(
-                                    x = canvasPos.x - hitBox.boxX.toFloat(),
-                                    y = canvasPos.y - hitBox.boxY.toFloat()
-                                )
-                                selectedBoxPosition.value = Offset(hitBox.boxX.toFloat(), hitBox.boxY.toFloat())
+                                false
                             }
                         },
                         onDrag = { change, dragAmount ->
-                            if (!editable) return@detectDragGesturesAfterLongPress // Skip drag if not editable
+                            if (!editable) return@detectDragGesturesAfterLongPress
 
                             change.consume()
                             val selectedBox = viewModel.selected.value
@@ -602,7 +557,6 @@ fun CanvasScreen(
                                 val newX = (canvasPos.x - dragStartRelativeOffset.x).toInt()
                                 val newY = (canvasPos.y - dragStartRelativeOffset.y).toInt()
 
-                                // 드래그 중에는 selectedBoxPosition을 업데이트하여 화면에 실시간으로 반영
                                 selectedBoxPosition.value = Offset(newX.toFloat(), newY.toFloat())
 
                                 val screenPos = canvasToScreen(Offset(newX.toFloat(), newY.toFloat()))
@@ -624,31 +578,49 @@ fun CanvasScreen(
                                 }
 
                                 canvasState = canvasState.copy(offset = newOffset)
+                            } else if (isRotating && selectedBox != null) {
+                                val canvasPos = screenToCanvas(change.position)
+                                val boxPos = Offset(selectedBox.boxX.toFloat(), selectedBox.boxY.toFloat())
+                                val boxSize = Size(selectedBox.width!!.toFloat(), selectedBox.height!!.toFloat())
+                                val cx = boxPos.x + boxSize.width/2
+                                val cy = boxPos.y + boxSize.height/2
+
+                                val dx = canvasPos.x - cx
+                                val dy = canvasPos.y - cy
+                                val angle = atan2(dy, dx) * (180f / Math.PI.toFloat())
+                                val deltaAngle = angle - rotateStartAngle
+                                selectedBox.degree = (initialDegree + deltaAngle.toInt()) % 360
+                                invalidateCanvasState.value = !invalidateCanvasState.value
                             }
                         },
                         onDragEnd = {
-                            if (!editable) return@detectDragGesturesAfterLongPress // Skip drag if not editable
+                            if (!editable) return@detectDragGesturesAfterLongPress
 
-                            isDragging = false
-                            val selectedBox = viewModel.selected.value
-                            selectedBoxPosition.value?.let { finalPos ->
-                                viewModel.updateBoxPosition(finalPos.x.toInt(), finalPos.y.toInt())
+                            if (isDragging) {
+                                isDragging = false
+                                val selectedBox = viewModel.selected.value
+                                selectedBoxPosition.value?.let { finalPos ->
+                                    viewModel.updateBoxPosition(finalPos.x.toInt(), finalPos.y.toInt())
+                                }
+                                viewModel.saveAll()
+                            } else if (isRotating) {
+                                isRotating = false
+                                viewModel.saveAll()
                             }
-                            viewModel.saveAll()
                         },
                         onDragCancel = {
                             isDragging = false
+                            isRotating = false
                         }
                     )
                 }
                 .pointerInput(Unit) {
                     detectTapGestures { offset ->
-                        if (!isDragging) {
+                        if (!isDragging && !isRotating) {
                             val canvasPos = screenToCanvas(offset)
 
                             if (viewModel.isTextPlacementMode.value || viewModel.isImagePlacementMode.value || viewModel.isVideoPlacementMode.value) {
                                 onTapForBox(canvasPos)
-                                // 박스 배치 후 배치 모드 종료
                                 viewModel.isTextPlacementMode.value = false
                                 viewModel.isImagePlacementMode.value = false
                                 viewModel.isVideoPlacementMode.value = false
@@ -691,7 +663,6 @@ fun CanvasScreen(
                     boundaryPaint
                 )
             }
-
 
             boxesToRender.forEach { box ->
                 drawBox(box)
@@ -808,3 +779,4 @@ suspend fun loadVideoThumbnail(context: Context, videoUrl: String): Bitmap? = wi
         null
     }
 }
+

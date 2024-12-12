@@ -9,10 +9,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModelProvider
@@ -47,24 +54,20 @@ class CanvasActivity : ComponentActivity() {
             return
         }
 
-        // Extract actual canvasId from MapData string if necessary
         val actualCanvasId = when {
             rawCanvasId.contains("canvasId=") ->
                 rawCanvasId.substringAfter("canvasId=").substringBefore(",")
             else -> rawCanvasId
         }
 
-        // Initialize canvas with cleaned canvasId
         canvasViewModel.initializeCanvas(actualCanvasId)
 
-        // Gallery launcher for images
         galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri?.let {
                 canvasViewModel.startImagePlacement(it.toString())
             }
         }
 
-        // Camera launcher for images
         cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
             if (success) {
                 tempImageUri?.let { uri ->
@@ -73,14 +76,12 @@ class CanvasActivity : ComponentActivity() {
             }
         }
 
-        // Gallery launcher for videos
         videoLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri?.let {
                 canvasViewModel.startVideoPlacement(it.toString())
             }
         }
 
-        // Camera launcher for videos
         videoCameraLauncher = registerForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
             if (success) {
                 tempVideoUri?.let { uri ->
@@ -163,9 +164,22 @@ class CanvasActivity : ComponentActivity() {
                             onClick = {
                                 isEditing.value = !isEditing.value
                                 canvasViewModel.toggleIsEditable()
-                            }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White
+                            ),
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .border(
+                                    width = 2.dp,
+                                    color = Color.Black,
+                                    shape = RoundedCornerShape(8.dp)
+                                )
                         ) {
-                            Text(if (isEditing.value) "Done" else "Edit")
+                            Text(
+                                text = if (isEditing.value) "Done" else "Edit",
+                                color = Color.Black
+                            )
                         }
                     }
                 },

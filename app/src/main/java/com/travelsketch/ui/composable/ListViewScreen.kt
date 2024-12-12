@@ -55,26 +55,7 @@ fun ListViewScreen(
         .background(Color(0xFF335577))
     ) {
         Column {
-            // Logout Button
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.LightGray)
-                    .padding(8.dp)
-            ) {
-                Button(
-                    onClick = { onLogout() },
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .size(48.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFFFCDD2),
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text("🚪", fontSize = 20.sp)
-                }
-            }
+
 
             LazyColumn(
                 modifier = Modifier

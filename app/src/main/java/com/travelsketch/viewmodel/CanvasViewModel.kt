@@ -660,20 +660,9 @@ class CanvasViewModel : ViewModel() {
         }
     }
 
-    // calculateImageDimensions 함수 수정
     private suspend fun calculateImageDimensions(context: Context, uri: Uri): Pair<Int, Int> {
         return withContext(Dispatchers.IO) {
             try {
-                // EXIF 정보 읽기
-                val exif = context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    androidx.exifinterface.media.ExifInterface(inputStream)
-                }
-
-                val orientation = exif?.getAttributeInt(
-                    androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
-                    androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
-                )
-
                 val options = BitmapFactory.Options().apply {
                     inJustDecodeBounds = true
                 }
@@ -683,18 +672,8 @@ class CanvasViewModel : ViewModel() {
                 }
 
                 val maxSize = 500
-                var width = options.outWidth
-                var height = options.outHeight
-
-                // 회전을 고려한 크기 조정
-                when (orientation) {
-                    androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90,
-                    androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> {
-                        val temp = width
-                        width = height
-                        height = temp
-                    }
-                }
+                val width = options.outWidth
+                val height = options.outHeight
 
                 val ratio = width.toFloat() / height.toFloat()
 
@@ -704,11 +683,12 @@ class CanvasViewModel : ViewModel() {
                     Pair((maxSize * ratio).toInt(), maxSize)
                 }
             } catch (e: Exception) {
-                Log.e("asdf", "Error calculating image dimensions", e)
+                Log.e("calculateImageDimensions", "Error calculating image dimensions", e)
                 Pair(500, 500)
             }
         }
     }
+
 
     fun delete() {
         viewModelScope.launch {

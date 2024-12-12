@@ -118,6 +118,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.1")
+
     implementation("com.google.auth:google-auth-library-oauth2-http:1.19.0")
 
     testImplementation(libs.junit)
