@@ -17,7 +17,7 @@ object GPTApiClient {
     fun sendImage(
         imageUri: Uri?,
         context: Context,
-        apiKey: String,
+//        apiKey: String,
         onResult: (String) -> Unit
     ) {
 
@@ -51,7 +51,7 @@ object GPTApiClient {
 
         val request = Request.Builder()
             .url(URL)
-            .addHeader("Authorization", "Bearer $apiKey")
+//            .addHeader("Authorization", "Bearer $apiKey")
             .addHeader("Content-Type", "application/json")
             .post(requestBody)
             .build()
