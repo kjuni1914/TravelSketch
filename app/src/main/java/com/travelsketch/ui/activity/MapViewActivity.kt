@@ -33,4 +33,13 @@ class MapViewActivity : FragmentActivity() {
         val intent = Intent(this, ListViewActivity::class.java)
         startActivity(intent)
     }
+
+    private fun navigateToCanvas(canvasId: String, isEditable: Boolean) {
+        val intent = Intent(this, CanvasActivity::class.java).apply {
+            putExtra("CANVAS_ID", canvasId)
+            putExtra("EDITABLE", isEditable) // Pass editable flag
+        }
+        startActivity(intent)
+    }
+
 }

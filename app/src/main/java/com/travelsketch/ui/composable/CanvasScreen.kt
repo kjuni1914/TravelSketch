@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Paint
 import android.media.MediaMetadataRetriever
-import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -41,7 +40,6 @@ import com.travelsketch.data.model.BoxType
 import com.travelsketch.data.model.ViewMode
 import com.travelsketch.viewmodel.CanvasViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.HttpURLConnection
@@ -332,9 +330,7 @@ fun CanvasScreen(
                 }
             }
 
-            // **추가한 로직 시작**: 회전 적용 후 복원
             canvas.restore()
-            // **추가한 로직 끝**
         }
     }
 
