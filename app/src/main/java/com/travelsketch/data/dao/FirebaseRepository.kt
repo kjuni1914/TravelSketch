@@ -199,24 +199,28 @@ class FirebaseRepository {
     suspend fun getFriendsFcmTokens(userId: String): List<String> {
         val tokens = mutableListOf<String>()
         try {
-            // Get the user's friends_ids
+            Log.d("fdsa", "Getting friends FCM tokens for user: $userId")
+
+            // 친구 ID 목록 가져오기
             val friendsSnapshot = database.child("users").child(userId).child("friends_ids").get().await()
             val friendsIds = friendsSnapshot.children.mapNotNull { it.getValue(String::class.java) }
+            Log.d("fdsa", "Found friend IDs: $friendsIds")
 
-            // Fetch each friend's FCM token
+            // 각 친구의 FCM 토큰 가져오기
             for (friendId in friendsIds) {
                 val tokenSnapshot = database.child("users").child(friendId).child("fcmToken").get().await()
                 val token = tokenSnapshot.getValue(String::class.java)
+                Log.d("fdsa", "Friend $friendId token: $token")
                 if (token != null) {
                     tokens.add(token)
                 }
             }
+            Log.d("fdsa", "Retrieved total ${tokens.size} tokens")
         } catch (e: Exception) {
-            Log.e("FirebaseRepository", "Failed to fetch friends' FCM tokens", e)
+            Log.e("fdsa", "Failed to fetch friends' FCM tokens", e)
         }
         return tokens
     }
-
 
     suspend fun uploadFile(fileUri: Uri, path: String): String? {
         return try {

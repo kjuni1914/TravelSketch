@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
-import com.travelsketch.api.PushNotificationHelper
+import com.google.firebase.auth.FirebaseAuth
 import com.travelsketch.data.dao.FirebaseRepository
 import com.travelsketch.data.model.MapData
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -128,16 +128,20 @@ class ListViewModel : ViewModel() {
                 repository.updateCanvasVisibility(canvasId, newVisibility)
 
                 if (newVisibility) {
-                    // Fetch friends' FCM tokens
                     val friendsTokens = repository.getFriendsFcmTokens(userId)
+                    Log.d("fdsa", "Retrieved friend tokens: $friendsTokens")
 
-                    // Send push notifications to friends
                     friendsTokens.forEach { token ->
-                        PushNotificationHelper.sendPushNotification(
-                            to = token,
-                            title = "Canvas Shared",
-                            body = "A new canvas has been shared with you by your friend!"
-                        )
+                        Log.d("fdsa", "Attempting to send notification to token: $token")
+                        try {
+                            PushNotificationHelper.sendPushNotification(
+                                to = token,
+                                title = "New Canvas Shared",
+                                body = "A new canvas has been shared with you by your friend!"
+                            )
+                        } catch (e: Exception) {
+                            Log.e("fdsa", "Failed to send notification", e)
+                        }
                     }
                 }
 
@@ -149,10 +153,17 @@ class ListViewModel : ViewModel() {
                     }
                 }
                 _canvasList.value = updatedList
+
             } catch (e: Exception) {
-                Log.e("ListViewModel", "Failed to toggle canvas visibility", e)
+                Log.e("fdsa", "Error in toggleCanvasVisibility", e)
             }
         }
+    }
+
+
+    private val firebaseAuth = FirebaseAuth.getInstance()
+    fun userLogout() {
+        firebaseAuth.signOut()
     }
 
 }
