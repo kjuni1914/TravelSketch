@@ -1,6 +1,7 @@
 package com.travelsketch.ui.composable
 
 import CanvasViewModel
+import android.app.Activity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,7 +24,8 @@ fun Editor(
     canvasViewModel: CanvasViewModel,
     showDialog: MutableState<Boolean>,
     showImageSourceDialog: MutableState<Boolean>,
-    showVideoSourceDialog : MutableState<Boolean>
+    showVideoSourceDialog : MutableState<Boolean>,
+    createAndSharePdf: () -> Unit
 ) {
     val selected = canvasViewModel.selected.value
 
@@ -45,6 +47,7 @@ fun Editor(
             btnLst.add(R.drawable.img_btn to { showImageSourceDialog.value = true })
             btnLst.add(R.drawable.record_btn to { /* TODO: Implement record */ })
             btnLst.add(R.drawable.video_btn to { showVideoSourceDialog.value = true })
+            btnLst.add(R.drawable.share_btn to { createAndSharePdf() })
         }
     }
 

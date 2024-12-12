@@ -1,15 +1,25 @@
+import android.Manifest
+import android.app.Activity
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.pdf.PdfDocument
 import android.media.MediaMetadataRetriever
+import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.database.FirebaseDatabase
@@ -24,6 +34,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
@@ -482,6 +495,104 @@ class CanvasViewModel : ViewModel() {
             }
         }
     }
+
+    // seonghun
+
+    fun checkStoragePermission(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    fun requestStoragePermission(activity: Activity) {
+        ActivityCompat.requestPermissions(
+            activity,
+            arrayOf(
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ),
+            PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    fun createPDF(): String? {
+        val pdfDocument = PdfDocument()
+        val paint = Paint().apply {
+            textSize = 30f
+        }
+
+        val pageInfo = PdfDocument.PageInfo.Builder(250, 400, 1).create()
+        val page = pdfDocument.startPage(pageInfo)
+
+        val canvas = page.canvas
+
+        // 텍스트, 이미지, 동영상 그림
+        for (box in boxes) {
+            if (box.type == BoxType.TEXT.toString())
+                canvas.drawText(box.data, box.boxX.toFloat(), box.boxY.toFloat(), paint)
+            else if (box.type == BoxType.IMAGE.toString()) {
+                if (box.data in bitmaps.keys) {
+                    canvas.drawBitmap(
+                        bitmaps[box.data]!!,
+                        box.boxX.toFloat(),
+                        box.boxY.toFloat(),
+                        paint
+                    )
+                }
+            }
+        }
+
+        pdfDocument.finishPage(page)
+
+        val directory = context?.getExternalFilesDir(null)
+        val file = File(directory, "tmp.pdf")
+
+        try {
+            // FileOutputStream을 use 블록으로 감싸고
+            FileOutputStream(file).use { outputStream ->
+                pdfDocument.writeTo(outputStream) // writeTo() 호출 시 outputStream을 사용
+            }
+
+            Log.d("TEST", "PDF가 ${file.absolutePath}에 저장되었습니다")
+            return file.absolutePath
+
+        } catch (e: IOException) {
+            e.printStackTrace()
+            Log.d("TEST", "PDF 저장 중 오류 발생")
+        } finally {
+            pdfDocument.close()  // pdfDocument.close()는 finally에서 호출되어야 함
+        }
+        return null
+    }
+
+    fun sharePdfFile(context: Context, filePath: String) {
+        val file = File(filePath)
+
+        if (file.exists()) {
+            val fileUri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+            } else {
+                Uri.fromFile(file)
+            }
+
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/pdf"  // 공유할 파일 타입
+                putExtra(Intent.EXTRA_STREAM, fileUri)  // 파일 URI 전달
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)  // URI 읽기 권한 부여
+            }
+
+            context.startActivity(Intent.createChooser(shareIntent, "Select App to share"))
+        } else {
+            // 파일이 존재하지 않으면 오류 처리
+            Log.d("TEST", "File doesn't exist.")
+        }
+    }
+
+    // end
 
     init {
         Log.d("asdfasdfasdf", "CanvasViewModel initialized")
