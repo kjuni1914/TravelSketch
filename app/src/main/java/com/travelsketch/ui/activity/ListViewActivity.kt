@@ -73,6 +73,10 @@ class ListViewActivity : ComponentActivity() {
                 },
                 onDeleteCanvas = { canvasId ->
                     viewModel.deleteCanvas(canvasId)
+                },
+                onLogout = {
+                    viewModel.userLogout()
+                    finish()
                 }
             )
         }
