@@ -1,6 +1,8 @@
 package com.travelsketch.ui.fragment
 
 import MapViewScreen
+import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -13,6 +15,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import com.google.android.gms.maps.model.LatLng
+import com.travelsketch.ui.activity.CanvasActivity
 import com.travelsketch.ui.activity.MapViewActivity
 import com.travelsketch.viewmodel.MapViewModel
 
@@ -26,7 +29,6 @@ class MapViewFragment : Fragment() {
         // 안전하게 arguments를 가져오도록 수정
         val userId = arguments?.getString(ARG_USER_ID)
         if (userId.isNullOrEmpty()) {
-            Log.e("MapViewFragment", "사용자 ID가 제공되지 않았습니다.")
             return
         }
         initialPosition = arguments?.getParcelable(ARG_LAT_LNG) ?: LatLng(37.5665, 126.9780)
@@ -45,7 +47,8 @@ class MapViewFragment : Fragment() {
                 MapViewScreen(
                     viewModel = mapViewModel,
                     onNavigateToListView = { navigateToListViewActivity() },
-                    onNavigateToMapSetup = { navigateToMapSetupFragment() } // Fragment 전환 콜백
+                    onNavigateToMapSetup = { navigateToMapSetupFragment() }, // Fragment 전환 콜백
+                    onNavigateToCanvas = { canvasId -> navigateToCanvasActivity(requireContext(), canvasId) } // CanvasActivity로 이동 콜백 추가
                 )
             }
         }
@@ -62,6 +65,12 @@ class MapViewFragment : Fragment() {
             )
             addToBackStack(null) // 뒤로 가기 버튼 지원
         }
+    }
+    private fun navigateToCanvasActivity(context: Context, canvasId: String) {
+        val intent = Intent(context, CanvasActivity::class.java).apply {
+            putExtra("CANVAS_ID", canvasId) // canvasId 전달
+        }
+        context.startActivity(intent)
     }
 
 

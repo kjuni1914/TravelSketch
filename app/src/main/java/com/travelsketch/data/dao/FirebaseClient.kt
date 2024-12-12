@@ -1,23 +1,16 @@
 package com.travelsketch.data.dao
 
-import android.net.Uri
 import android.util.Log
-import androidx.compose.animation.core.snap
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.getValue
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import com.travelsketch.data.model.BoxData
+import com.travelsketch.data.model.BoxType
 import com.travelsketch.data.model.CanvasData
 import com.travelsketch.data.model.UserData
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 
 object FirebaseClient: DatabaseClient {
     override val databaseRef: DatabaseReference
@@ -111,10 +104,15 @@ object FirebaseClient: DatabaseClient {
         boxData: BoxData
     ): Boolean {
         return try {
-            databaseRef.child("canvas").child(canvasId).child(boxId).setValue(boxData).await()
+            Log.d("asdfasdfasdf", "Writing box data - Canvas: $canvasId, Box: ${boxData.id}")
+            Log.d("asdfasdfasdf", "Box data to write: $boxData")
+
+            val reference = databaseRef.child("canvas").child(canvasId).child(boxData.id)
+            reference.setValue(boxData).await()
+            Log.d("asdfasdfasdf", "Successfully wrote box data")
             true
         } catch (e: Exception) {
-            Log.d("ITM", "DAO Error: $e")
+            Log.e("asdfasdfasdf", "Error writing box data", e)
             false
         }
     }
@@ -123,11 +121,14 @@ object FirebaseClient: DatabaseClient {
         return try {
             val snapshot = databaseRef.child("canvas").child(canvasId).child(boxId).get().await()
 
-            if (snapshot.exists())
-                snapshot.getValue(BoxData::class.java)
-            else
+            if (snapshot.exists()) {
+                val boxData = snapshot.getValue(BoxData::class.java)
+                // ID 필드 설정
+                boxData?.id = boxId
+                boxData
+            } else {
                 null
-
+            }
         } catch (e: Exception) {
             Log.d("ITM", "DAO Error: $e")
             null
@@ -136,26 +137,41 @@ object FirebaseClient: DatabaseClient {
 
     override suspend fun readAllBoxData(canvasId: String): List<BoxData>? {
         return try {
+            Log.d("asdfasdfasdf", "Starting readAllBoxData for canvas: $canvasId")
             val snapshot = databaseRef.child("canvas").child(canvasId).get().await()
-            val canvasDataList = mutableListOf<BoxData>()
+            Log.d("asdfasdfasdf", "Received snapshot exists: ${snapshot.exists()}")
+
+            val boxDataList = mutableListOf<BoxData>()
 
             if (snapshot.exists()) {
                 snapshot.children.forEach { child ->
-                    if (child.key?.startsWith("box_") == true) {
-                        val boxData = child.getValue(BoxData::class.java)
-                        if (boxData != null)
-                            canvasDataList.add(boxData)
+                    if (child.key != "title") {
+                        try {
+                            val boxData = child.getValue(BoxData::class.java)
+                            boxData?.let {
+                                it.id = child.key ?: it.id
+                                // data가 "uploading"이 아닌 경우에만 추가
+                                if (it.data != "uploading") {
+                                    boxDataList.add(it)
+                                    Log.d("asdfasdfasdf", "Added box: $it")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("asdfasdfasdf", "Error processing box data for key: ${child.key}", e)
+                        }
                     }
                 }
             }
 
-            canvasDataList
+            Log.d("asdfasdfasdf", "Returning ${boxDataList.size} boxes")
+            boxDataList
 
         } catch (e: Exception) {
-            Log.d("ITM", "DAO Error: $e")
+            Log.e("asdfasdfasdf", "Error in readAllBoxData", e)
             null
         }
     }
+
     override suspend fun deleteBoxData(canvasId: String, boxId: String): Boolean {
         return try {
             databaseRef.child("canvas").child(canvasId).child(boxId).removeValue().await()

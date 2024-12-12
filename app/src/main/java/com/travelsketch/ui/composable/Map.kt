@@ -1,14 +1,7 @@
 package com.travelsketch.ui.composable
 
-import android.Manifest
-import android.annotation.SuppressLint
-import android.content.Context
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import com.google.android.gms.maps.GoogleMap.MAP_TYPE_NORMAL
 import com.google.android.gms.maps.GoogleMapOptions
 import com.google.maps.android.compose.*

@@ -51,15 +51,24 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/LICENSE"
+            excludes += "META-INF/LICENSE.txt"
+            excludes += "META-INF/NOTICE"
+            excludes += "META-INF/NOTICE.txt"
         }
     }
 }
 
 dependencies {
+    implementation("com.itextpdf:itextpdf:5.0.6")
     implementation("com.squareup.okhttp3:okhttp:4.9.0")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.0")
     implementation("com.google.code.gson:gson:2.8.7")
     implementation("androidx.room:room-runtime:2.6.1")
+    implementation(libs.firebase.firestore.ktx)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
     ksp("androidx.room:room-compiler:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     implementation("androidx.compose.material:material-icons-extended:1.5.1") // 준희 // 비밀번호 보이기|가리기 버튼
@@ -100,6 +109,16 @@ dependencies {
 //    implementation ("com.google.android.exoplayer:exoplayer:2.19.0") // media video 재생
     implementation(libs.play.services.location) // 최신 버전 확인 후 업데이트
     implementation ("com.google.firebase:firebase-messaging:23.1.2") // fcm push 알림
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.0") // view model lifecycle
+
+    implementation("org.tensorflow:tensorflow-lite:2.8.0")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.0")
+
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.1")
+
+    implementation("com.google.auth:google-auth-library-oauth2-http:1.19.0")
 
 
     testImplementation(libs.junit)

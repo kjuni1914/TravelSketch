@@ -1,8 +1,12 @@
 package com.travelsketch.ui.activity
 
 import SelectViewType
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -20,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.room.Room
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -40,6 +45,24 @@ class LoginActivity : ComponentActivity() {
 
     private lateinit var googleSignInClient: GoogleSignInClient
 
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            permissions.entries.forEach { (permission, isGranted) ->
+                when (permission) {
+                    Manifest.permission.CAMERA -> {
+                        if (!isGranted) {
+                            Toast.makeText(this, "Camera permission is required", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    Manifest.permission.POST_NOTIFICATIONS -> {
+                        if (!isGranted) {
+                            Toast.makeText(this, "Notification permission is required", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+        }
+
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -57,39 +80,58 @@ class LoginActivity : ComponentActivity() {
         }
     }
 
+    private fun checkAndRequestPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val permissionsToRequest = mutableListOf<String>()
+
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.CAMERA
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.CAMERA)
+            }
+
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+
+            if (permissionsToRequest.isNotEmpty()) {
+                requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
+            }
+        } else {
+            // Android 13 미만에서는 카메라 권한만 체크
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.CAMERA
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         loginViewModel.setActivity(this)
+
+        checkAndRequestPermissions()
+
         val googleSignInOption = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.google_client_id))
             .requestEmail()
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, googleSignInOption)
-        loginViewModel.userReload() // 자동로그아웃
 
         val database = Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java,
             "app_database"
-        )
-//            .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
-//            .addCallback(object : RoomDatabase.Callback() {
-//                override fun onCreate(db: SupportSQLiteDatabase) {
-//                    super.onCreate(db)
-//                    Log.d("Room", "Database created")
-//                }
-//
-//                override fun onOpen(db: SupportSQLiteDatabase) {
-//                    super.onOpen(db)
-//                    Log.d("Room", "Database opened")
-//                }
-//            })
-//            .setQueryCallback({ sqlQuery, bindArgs ->
-//                Log.d("Room", "SQL Query: $sqlQuery")
-//                Log.d("Room", "Args: $bindArgs")
-//            }, Executors.newSingleThreadExecutor())
-            .build()
-
+        ).build()
 
         loginViewModel.setDatabase(database)
         FirebaseClient.initViewTypeDao(database.viewTypeDao())
@@ -99,7 +141,6 @@ class LoginActivity : ComponentActivity() {
         } else {
             loginViewModel.setCurrentScreen("Login")
         }
-
 
         setContent {
             val currentScreen by loginViewModel.currentScreen.collectAsState()

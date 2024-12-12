@@ -1,13 +1,18 @@
 package com.travelsketch.data.dao
 
+import android.net.Uri
 import android.util.Log
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.storage.FirebaseStorage
 import com.travelsketch.data.model.MapData
 import kotlinx.coroutines.tasks.await
+import java.io.File
+import java.util.UUID
 
 class FirebaseRepository {
     private val database = FirebaseDatabase.getInstance().reference
+    private val storage = FirebaseStorage.getInstance()
 
     // 특정 Canvas 데이터 읽기
     suspend fun readMapCanvasData(canvasId: String): MapData? {
@@ -44,7 +49,7 @@ class FirebaseRepository {
         }
     }
 
-    /// 사용자의 canvas_ids 읽기
+    // 사용자의 canvas_ids 읽기
     suspend fun readUserCanvasIds(userId: String): List<String> {
         return try {
             val snapshot = database.child("users").child(userId).child("canvas_ids").get().await()
@@ -172,6 +177,21 @@ class FirebaseRepository {
         }
     }
 
+    suspend fun updateCanvasTitle(canvasId: String, title: String) {
+        try {
+            database.child("map").child(canvasId).child("title").setValue(title).await()
+            database.child("canvas").child(canvasId).child("title").setValue(title).await()
+            Log.d("FirebaseRepository", "Canvas $canvasId visibility updated to $title")
+        } catch (e: Exception) {
+            Log.e("FirebaseRepository", "Failed to update visibility for canvas $canvasId", e)
+        }
+    }
+
+    suspend fun updatePreviewImage(canvasId: String, imageName: String) {
+        val databaseRef = FirebaseDatabase.getInstance().reference.child("map/$canvasId/preview_box_id")
+        databaseRef.setValue(imageName).await()
+    }
+
     suspend fun updateFcmToken(userId: String, token: String) {
         database.child("users").child(userId).child("fcmToken").setValue(token).await()
     }
@@ -179,25 +199,65 @@ class FirebaseRepository {
     suspend fun getFriendsFcmTokens(userId: String): List<String> {
         val tokens = mutableListOf<String>()
         try {
-            // Get the user's friends_ids
+            Log.d("fdsa", "Getting friends FCM tokens for user: $userId")
+
+            // 친구 ID 목록 가져오기
             val friendsSnapshot = database.child("users").child(userId).child("friends_ids").get().await()
             val friendsIds = friendsSnapshot.children.mapNotNull { it.getValue(String::class.java) }
+            Log.d("fdsa", "Found friend IDs: $friendsIds")
 
-            // Fetch each friend's FCM token
+            // 각 친구의 FCM 토큰 가져오기
             for (friendId in friendsIds) {
                 val tokenSnapshot = database.child("users").child(friendId).child("fcmToken").get().await()
                 val token = tokenSnapshot.getValue(String::class.java)
+                Log.d("fdsa", "Friend $friendId token: $token")
                 if (token != null) {
                     tokens.add(token)
                 }
             }
+            Log.d("fdsa", "Retrieved total ${tokens.size} tokens")
         } catch (e: Exception) {
-            Log.e("FirebaseRepository", "Failed to fetch friends' FCM tokens", e)
+            Log.e("fdsa", "Failed to fetch friends' FCM tokens", e)
         }
         return tokens
     }
 
+    suspend fun uploadFile(fileUri: Uri, path: String): String? {
+        return try {
+            val storageRef = storage.reference.child(path)
+            storageRef.putFile(fileUri).await()
+            storageRef.downloadUrl.await().toString() // 업로드 후 다운로드 URL 반환
+        } catch (e: Exception) {
+            Log.e("FirebaseRepository", "File upload failed", e)
+            null
+        }
+    }
 
+    suspend fun deleteFile(path: String): Boolean {
+        return try {
+            val storageRef = storage.reference.child(path)
+            storageRef.delete().await()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun deleteCanvas(canvasId: String) {
+        try {
+            // Realtime Database에서 캔버스 삭제
+            val databaseRef = FirebaseDatabase.getInstance().reference
+            databaseRef.child("map").child(canvasId).removeValue().await()
+            databaseRef.child("canvas").child(canvasId).removeValue().await()
+            // 관련 Storage 데이터 삭제 (예: preview_box_id 이미지)
+            val storageRef = FirebaseStorage.getInstance().reference.child("media/images/$canvasId")
+            storageRef.delete().await()
+
+            Log.d("FirebaseRepository", "Successfully deleted canvas and related data for $canvasId")
+        } catch (e: Exception) {
+            Log.e("FirebaseRepository", "Failed to delete canvas $canvasId", e)
+        }
+    }
 
     // Firebase Snapshot을 CanvasData로 변환
     private fun parseMapCanvasData(snapshot: DataSnapshot, canvasId: String): MapData {
@@ -207,10 +267,7 @@ class FirebaseRepository {
         val mapCanvasTitle = snapshot.child("title").getValue(String::class.java) ?: ""
         val isVisible = snapshot.child("is_visible").getValue(Boolean::class.java) ?: false
         val range = snapshot.child("range").getValue(Double::class.java) ?: 0.0
-        Log.d(
-            "FirebaseRepository",
-            "Parsed data - canvasId: $canvasId, previewBoxId: $previewBoxId, avgLatitude: $avgGpsLatitude, avgLongitude: $avgGpsLongitude, title: $mapCanvasTitle, is_visible : ${isVisible}"
-        )
+
         return MapData(
             canvasId = canvasId, // canvasId 추가
             avg_gps_latitude = avgGpsLatitude,
@@ -221,4 +278,57 @@ class FirebaseRepository {
             title = mapCanvasTitle
         )
     }
+
+
+    suspend fun uploadImageAndGetUrl(uri: Uri): String {
+        Log.d("asdfasdfasdf", "Starting image upload to Firebase Storage")
+        try {
+            // 타임스탬프와 랜덤 UUID를 조합하여 고유한 파일명 생성
+            val timestamp = System.currentTimeMillis()
+            val fileName = "image_${timestamp}_${UUID.randomUUID()}.jpg"
+            val storageRef = FirebaseStorage.getInstance().reference
+                .child("media/images/$fileName")
+
+            Log.d("asdfasdfasdf", "Uploading to path: media/images/$fileName")
+
+            // 이미지 업로드
+            val uploadTask = storageRef.putFile(uri).await()
+            Log.d("asdfasdfasdf", "Upload completed successfully")
+
+            // 다운로드 URL 가져오기
+            val downloadUrl = storageRef.downloadUrl.await().toString()
+            Log.d("asdfasdfasdf", "Got download URL: $downloadUrl")
+
+            return downloadUrl
+        } catch (e: Exception) {
+            Log.e("asdfasdfasdf", "Error uploading image", e)
+            throw e
+        }
+    }
+    suspend fun uploadVideoAndGetUrl(uri: Uri): String {
+        Log.d("asdf", "Starting video upload to Firebase Storage")
+        return try {
+            // 타임스탬프와 랜덤 UUID를 조합하여 고유한 파일명 생성
+            val timestamp = System.currentTimeMillis()
+            val fileName = "video_${timestamp}_${UUID.randomUUID()}.mp4"
+            val storageRef = FirebaseStorage.getInstance().reference
+                .child("media/videos/$fileName")
+
+            Log.d("FirebaseRepository", "Uploading to path: media/videos/$fileName")
+
+            // 동영상 업로드
+            val uploadTask = storageRef.putFile(uri).await()
+            Log.d("FirebaseRepository", "Upload completed successfully")
+
+            // 다운로드 URL 가져오기
+            val downloadUrl = storageRef.downloadUrl.await().toString()
+            Log.d("FirebaseRepository", "Got download URL: $downloadUrl")
+
+            downloadUrl
+        } catch (e: Exception) {
+            Log.e("FirebaseRepository", "Error uploading video", e)
+            throw e
+        }
+    }
+
 }

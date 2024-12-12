@@ -98,8 +98,11 @@ object FirebaseClient: DatabaseClient {
             width = width,
             latitude = latitude,
             longitude = longitude,
-            time = time)
-        database.child("canvas").child(canvasId).child(boxId).setValue(box).await()
+            time = time,
+            type = type
+        )
+        // box.id는 자동 생성되므로 해당 ID를 사용
+        database.child("canvas").child(canvasId).child(box.id).setValue(box).await()
     }
 
     override suspend fun readBox(canvasId:String, boxId: String): BoxData? {
@@ -108,6 +111,8 @@ object FirebaseClient: DatabaseClient {
                 .addOnSuccessListener { dataSnapshot ->
                     if (dataSnapshot.exists()) {
                         val boxData = dataSnapshot.getValue(BoxData::class.java)
+                        // ID 필드 설정
+                        boxData?.id = boxId
                         continuation.resume(boxData)
                     } else {
                         continuation.resume(null)
@@ -134,6 +139,7 @@ object FirebaseClient: DatabaseClient {
         width: Int
     ) {
         val updatedBox = BoxData(
+            id = boxId, // 기존 ID 유지
             boxX = boxX,
             boxY = boxY,
             boxZ = boxZ,
@@ -143,7 +149,9 @@ object FirebaseClient: DatabaseClient {
             width = width,
             latitude = latitude,
             longitude = longitude,
-            time = time)
+            time = time,
+            type = type.toString()
+        )
         database.child("canvas").child(canvasId).child(boxId).setValue(updatedBox).await()
     }
 
@@ -216,5 +224,4 @@ object FirebaseClient: DatabaseClient {
     override suspend fun setViewType(userId: String, viewType: ViewType) {
         viewTypeDao.setViewType(ViewTypeEntity(userId, viewType))
     }
-
 }
