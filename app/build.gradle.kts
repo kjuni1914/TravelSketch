@@ -56,6 +56,9 @@ android {
 }
 
 dependencies {
+    implementation("com.squareup.okhttp3:okhttp:4.9.0")
+    implementation("com.squareup.moshi:moshi-kotlin:1.15.0")
+    implementation("com.google.code.gson:gson:2.8.7")
     implementation("androidx.room:room-runtime:2.6.1")
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.androidx.media3.exoplayer)
