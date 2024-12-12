@@ -17,6 +17,7 @@ import android.widget.Toast
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalDensity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -521,9 +522,12 @@ class CanvasViewModel : ViewModel() {
             textSize = 30f
         }
 
-        val pageInfo = PdfDocument.PageInfo.Builder(250, 400, 1).create()
-        val page = pdfDocument.startPage(pageInfo)
+        val pageInfo = PdfDocument.PageInfo.Builder(
+            dpToPx(screenWidth),
+            dpToPx(screenHeight),
+            1).create()
 
+        val page = pdfDocument.startPage(pageInfo)
         val canvas = page.canvas
 
         // 텍스트, 이미지, 동영상 그림
@@ -590,6 +594,11 @@ class CanvasViewModel : ViewModel() {
             // 파일이 존재하지 않으면 오류 처리
             Log.d("TEST", "File doesn't exist.")
         }
+    }
+
+    private fun dpToPx(dp: Float): Int {
+        val density = context!!.resources.displayMetrics.density
+        return (dp * density).toInt()
     }
 
     // end

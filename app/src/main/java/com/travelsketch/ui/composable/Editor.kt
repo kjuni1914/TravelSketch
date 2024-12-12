@@ -47,9 +47,9 @@ fun Editor(
             btnLst.add(R.drawable.img_btn to { showImageSourceDialog.value = true })
             btnLst.add(R.drawable.record_btn to { /* TODO: Implement record */ })
             btnLst.add(R.drawable.video_btn to { showVideoSourceDialog.value = true })
-            btnLst.add(R.drawable.share_btn to { createAndSharePdf() })
         }
     }
+    btnLst.add(R.drawable.share_btn to { createAndSharePdf() })
 
     btnLst.add(R.drawable.save_btn to { canvasViewModel.saveAll() })
 
