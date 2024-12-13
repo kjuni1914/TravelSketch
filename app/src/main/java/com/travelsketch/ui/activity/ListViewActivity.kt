@@ -2,16 +2,21 @@ package com.travelsketch.ui.activity
 
 import ListElementData
 import ListViewScreen
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.core.content.ContextCompat
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.storage.FirebaseStorage
 import com.travelsketch.viewmodel.ListViewModel
@@ -24,7 +29,7 @@ class ListViewActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        checkAndRequestPermissions()
         // 사용자 ID 가져오기
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId == null) {
@@ -134,6 +139,59 @@ class ListViewActivity : ComponentActivity() {
         startActivity(intent)
     }
 
+
+
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            permissions.entries.forEach { (permission, isGranted) ->
+                when (permission) {
+                    Manifest.permission.CAMERA -> {
+                        if (!isGranted) {
+                            Toast.makeText(this, "Camera permission is required", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    Manifest.permission.POST_NOTIFICATIONS -> {
+                        if (!isGranted) {
+                            Toast.makeText(this, "Notification permission is required", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+        }
+
+    private fun checkAndRequestPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val permissionsToRequest = mutableListOf<String>()
+
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.CAMERA
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.CAMERA)
+            }
+
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+
+            if (permissionsToRequest.isNotEmpty()) {
+                requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.CAMERA
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
+            }
+        }
+    }
 
     companion object {
         private const val REQUEST_IMAGE_PICK = 1

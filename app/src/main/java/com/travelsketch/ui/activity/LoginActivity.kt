@@ -104,7 +104,6 @@ class LoginActivity : ComponentActivity() {
                 requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
             }
         } else {
-            // Android 13 미만에서는 카메라 권한만 체크
             if (ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.CAMERA
@@ -126,7 +125,7 @@ class LoginActivity : ComponentActivity() {
             .requestEmail()
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, googleSignInOption)
-        loginViewModel.userReload() // 자동로그아웃
+//        loginViewModel.userReload()
 
         val database = Room.databaseBuilder(
             applicationContext,

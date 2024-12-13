@@ -169,14 +169,14 @@ fun SignUp(
                 }
             )
         }
-        Button(
-            onClick = {
-                loginViewModel._showCelebration.value = true
-            }
-
-        ) {
-            Text("로그인이펙트")
-        }
+//        Button(
+//            onClick = {
+//                loginViewModel._showCelebration.value = true
+//            }
+//
+//        ) {
+//            Text("로그인이펙트")
+//        }
     }
 
 }
