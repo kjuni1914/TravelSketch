@@ -23,9 +23,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
-import androidx.lifecycle.ViewModelProvider
 import com.travelsketch.ui.composable.*
 import com.travelsketch.ui.layout.CanvasEditLayout
 import com.travelsketch.viewmodel.CanvasViewModel

@@ -14,8 +14,6 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.fillMaxSize
-import androidx.glance.layout.padding
-import androidx.glance.text.Text
 import com.travelsketch.ui.activity.LoginActivity
 
 class AppWidget : GlanceAppWidget() {
@@ -35,13 +33,6 @@ class AppWidget : GlanceAppWidget() {
             verticalAlignment = Alignment.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            Button(
-                text = "MapView",
-                onClick = actionStartActivity(
-
-                )
-            )
             Button(
                 text = "Home",
                 onClick = actionStartActivity<LoginActivity>()
